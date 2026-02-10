@@ -5,9 +5,11 @@ interface LayoutProps {
   children: React.ReactNode;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  headerContent?: React.ReactNode;
+  headerClassName?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, headerContent, headerClassName }) => {
   const tabs = [
     { id: 'dashboard', label: 'Início', icon: '📊' },
     { id: 'transactions', label: 'Transações', icon: '💸' },
@@ -15,12 +17,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
   ];
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0 md:pl-64 flex flex-col">
+    <div className="min-h-screen pb-20 md:pb-0 md:pl-64 flex flex-col bg-[#F5F5F5]">
       {/* Sidebar (Desktop) */}
-      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-slate-200 flex-col p-6">
+      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-slate-200 flex-col p-6 z-50">
         <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl font-bold">F</div>
-          <h1 className="text-xl font-bold text-slate-800">Finans</h1>
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl font-bold">C</div>
+          <h1 className="text-xl font-bold text-slate-800">ControlaGrana</h1>
         </div>
         
         <nav className="flex-1 space-y-1">
@@ -41,22 +43,26 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
         </nav>
       </aside>
 
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-bottom border-slate-200 p-4 md:px-8 flex items-center justify-between">
-        <div className="md:hidden flex items-center gap-2">
-           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">F</div>
-           <span className="font-bold text-slate-800">Finans</span>
-        </div>
-        <h2 className="hidden md:block text-lg font-semibold text-slate-700">
-          {tabs.find(t => t.id === activeTab)?.label}
-        </h2>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-xs font-medium text-slate-600">JD</div>
-        </div>
+      {/* Dynamic Header */}
+      <header className={`sticky top-0 z-40 transition-all duration-300 ${headerClassName || 'bg-white/80 backdrop-blur-md border-b border-slate-200'}`}>
+        {headerContent ? headerContent : (
+          <div className="p-4 md:px-8 flex items-center justify-between">
+            <div className="md:hidden flex items-center gap-2">
+               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">C</div>
+               <span className="font-bold text-slate-800">ControlaGrana</span>
+            </div>
+            <h2 className="hidden md:block text-lg font-semibold text-slate-700">
+              {tabs.find(t => t.id === activeTab)?.label}
+            </h2>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-xs font-medium text-slate-600">JD</div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 max-w-7xl mx-auto w-full">
         {children}
       </main>
 

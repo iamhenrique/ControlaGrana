@@ -2,17 +2,14 @@
 import React, { useState, useMemo } from 'react';
 import Layout from './components/Layout';
 import { useFinanceStore } from './store';
-import SummaryCards from './components/SummaryCards';
+import ResumoCard from './components/SummaryCards';
 import { formatCurrency, getMonthYear } from './utils';
 import { Status, TransactionType, Frequency } from './types';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 
-// Fix: Moved Modal component outside of the main App component. 
-// Defining components inside others can cause TypeScript inference issues (like "missing children property")
-// and performance penalties due to re-creation on every render.
-const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
+const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children?: React.ReactNode }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -43,139 +40,167 @@ const App: React.FC = () => {
   const [showExpForm, setShowExpForm] = useState(false);
   const [showDebtForm, setShowDebtForm] = useState(false);
 
+  const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
+
   // Filter logic
   const filteredData = useMemo(() => {
     const monthStr = `${selectedMonth + 1}-${selectedYear}`;
+    const today = new Date();
     
+    // Monthly datasets
     const monthlyRevenues = revenues.filter(r => getMonthYear(r.date) === monthStr);
     const monthlyExpenses = expenses.filter(e => getMonthYear(e.dueDate) === monthStr);
     const monthlyInstallments = installments.filter(i => getMonthYear(i.dueDate) === monthStr);
 
+    // Revenue Subdivisions
     const totalRevenue = monthlyRevenues.reduce((acc, r) => acc + r.value, 0);
+    const receivedRevenue = monthlyRevenues
+      .filter(r => new Date(r.date) <= today)
+      .reduce((acc, r) => acc + r.value, 0);
+    const pendingRevenue = totalRevenue - receivedRevenue;
+
+    // Expense Subdivisions
     const totalSimpleExpenses = monthlyExpenses.reduce((acc, e) => acc + e.value, 0);
     const totalInstallments = monthlyInstallments.reduce((acc, i) => acc + i.value, 0);
     const totalExpense = totalSimpleExpenses + totalInstallments;
-    const balance = totalRevenue - totalExpense;
+    
+    const paidExpenses = monthlyExpenses.filter(e => e.status === Status.PAID).reduce((acc, e) => acc + e.value, 0);
+    const paidInstallments = monthlyInstallments.filter(i => i.status === Status.PAID).reduce((acc, i) => acc + i.value, 0);
+    const totalPaid = paidExpenses + paidInstallments;
+    const totalPending = totalExpense - totalPaid;
+
+    // Balances
+    const currentBalance = receivedRevenue - totalPaid;
+    const finalBalance = totalRevenue - totalExpense;
 
     return {
-      monthlyRevenues,
-      monthlyExpenses,
-      monthlyInstallments,
-      totalRevenue,
-      totalExpense,
-      totalInstallments,
-      balance
+      totalRevenue, receivedRevenue, pendingRevenue,
+      totalExpense, totalPaid, totalPending,
+      currentBalance, finalBalance,
+      monthlyRevenues, monthlyExpenses, monthlyInstallments
     };
   }, [revenues, expenses, installments, selectedMonth, selectedYear]);
 
-  // Alerts logic
-  const alerts = useMemo(() => {
-    const today = new Date();
-    const list: string[] = [];
-    
-    expenses.forEach(e => {
-      const due = new Date(e.dueDate);
-      const diff = (due.getTime() - today.getTime()) / (1000 * 3600 * 24);
-      if (e.status === Status.PENDING) {
-        if (diff < 0) list.push(`Despesa vencida: R$ ${e.value.toFixed(2)}`);
-        else if (diff <= 3) list.push(`Despesa vence em breve (${Math.ceil(diff)} dias)`);
-      }
-    });
-
-    installments.forEach(i => {
-      const due = new Date(i.dueDate);
-      const diff = (due.getTime() - today.getTime()) / (1000 * 3600 * 24);
-      if (i.status === Status.PENDING) {
-        if (diff < 0) list.push(`Parcela vencida: R$ ${i.value.toFixed(2)}`);
-        else if (diff <= 3) list.push(`Parcela vence em breve (${Math.ceil(diff)} dias)`);
-      }
-    });
-
-    return list;
-  }, [expenses, installments]);
-
   const renderDashboard = () => {
-    const chartData = [
-      { name: 'Receitas', value: filteredData.totalRevenue, color: '#10b981' },
-      { name: 'Despesas', value: filteredData.totalExpense, color: '#f43f5e' },
-    ];
-
-    const upcoming = [...filteredData.monthlyExpenses, ...filteredData.monthlyInstallments]
-      .filter(i => i.status === Status.PENDING)
-      .sort((a, b) => new Date('dueDate' in a ? a.dueDate : a.dueDate).getTime() - new Date('dueDate' in b ? b.dueDate : b.dueDate).getTime())
-      .slice(0, 5);
-
     return (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SummaryCards title="Saldo Mensal" value={filteredData.balance} icon="💰" color="bg-indigo-100 text-indigo-600" />
-          <SummaryCards title="Receitas" value={filteredData.totalRevenue} icon="📈" color="bg-emerald-100 text-emerald-600" />
-          <SummaryCards title="Despesas" value={filteredData.totalExpense} icon="📉" color="bg-rose-100 text-rose-600" />
-          <SummaryCards title="Comprometido" value={filteredData.totalInstallments} icon="💳" color="bg-blue-100 text-blue-600" />
+      <div className="animate-in fade-in duration-500">
+        {/* Period Selector Component */}
+        <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex items-center justify-center gap-6">
+          <button 
+            onClick={handlePrevMonth}
+            className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
+          >
+            ‹
+          </button>
+          <div className="flex items-center gap-2 bg-slate-50 px-6 py-2 rounded-full border border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors">
+            <span className="text-xl">📅</span>
+            <span className="text-sm font-bold text-slate-700 capitalize">
+              {months[selectedMonth]}, {selectedYear}
+            </span>
+          </div>
+          <button 
+            onClick={handleNextMonth}
+            className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
+          >
+            ›
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Chart Section */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Comparativo de Fluxo</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                  <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+        {/* Resumo Grid */}
+        <div className="p-6 md:p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <ResumoCard 
+              title="Receitas" 
+              totalValue={filteredData.totalRevenue} 
+              subValues={[
+                { label: 'Recebido', value: filteredData.receivedRevenue },
+                { label: 'A Receber', value: filteredData.pendingRevenue }
+              ]}
+              accentColor="text-emerald-600"
+            />
+            <ResumoCard 
+              title="Despesas" 
+              totalValue={filteredData.totalExpense} 
+              subValues={[
+                { label: 'Pagas', value: filteredData.totalPaid },
+                { label: 'A Pagar', value: filteredData.totalPending }
+              ]}
+              accentColor="text-rose-600"
+            />
+            <ResumoCard 
+              title="Saldos" 
+              totalValue={filteredData.finalBalance} 
+              subValues={[
+                { label: 'Atual', value: filteredData.currentBalance },
+                { label: 'Final', value: filteredData.finalBalance }
+              ]}
+              accentColor="text-indigo-600"
+            />
+            <ResumoCard 
+              title="Contas Bancárias" 
+              totalValue={filteredData.currentBalance} // Placeholder for bank accounts total
+            />
           </div>
 
-          {/* Alerts & Upcoming Section */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Próximos Vencimentos</h3>
-            {upcoming.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-                 <span className="text-4xl mb-2">🎉</span>
-                 <p className="text-sm">Nada vencendo em breve!</p>
+          {/* Quick Actions / Chart Section */}
+          <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800 mb-6 px-2">Evolução Mensal</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'Receitas', value: filteredData.totalRevenue, color: '#10b981' },
+                    { name: 'Despesas', value: filteredData.totalExpense, color: '#f43f5e' },
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                    <Tooltip 
+                      cursor={{ fill: '#f8fafc' }}
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="value" radius={[12, 12, 0, 0]}>
+                      {[
+                        { color: '#10b981' },
+                        { color: '#f43f5e' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {upcoming.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">
-                        {'debtId' in item ? 'Parcela' : 'Despesa'}
-                      </span>
-                      <span className="text-sm font-medium text-slate-700">
-                        {new Date('dueDate' in item ? item.dueDate : item.dueDate).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                    <span className="text-sm font-bold text-rose-500">{formatCurrency(item.value)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
 
-            {alerts.length > 0 && (
-              <div className="mt-6">
-                 <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 tracking-widest">Alertas</h4>
-                 <div className="space-y-2">
-                    {alerts.slice(0, 3).map((a, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 p-2 rounded-lg font-medium">
-                        <span>⚠️</span> {a}
-                      </div>
-                    ))}
-                 </div>
-              </div>
-            )}
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-6">
+               <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-3xl">🚀</div>
+               <div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Novo Registro</h3>
+                  <p className="text-sm text-slate-500 mb-6">Mantenha seu controle grana sempre atualizado.</p>
+                  <div className="flex flex-col gap-3 w-full">
+                    <button onClick={() => setShowRevForm(true)} className="w-full bg-emerald-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-emerald-100">Adicionar Receita</button>
+                    <button onClick={() => setShowExpForm(true)} className="w-full bg-rose-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-rose-100">Adicionar Despesa</button>
+                  </div>
+               </div>
+            </div>
           </div>
         </div>
       </div>
@@ -184,51 +209,35 @@ const App: React.FC = () => {
 
   const renderTransactions = () => {
     return (
-      <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+      <div className="p-6 md:p-8 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-bold text-slate-800">Histórico do Mês</h2>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowRevForm(true)} 
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all flex items-center gap-2"
-            >
-              <span>+</span> Receita
-            </button>
-            <button 
-              onClick={() => setShowExpForm(true)} 
-              className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-rose-200 transition-all flex items-center gap-2"
-            >
-              <span>+</span> Despesa
-            </button>
-          </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-slate-100">
+                <tr className="border-b border-slate-100 bg-slate-50/50">
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Data</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Tipo</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Valor</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Ações</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {/* Revenues */}
                 {filteredData.monthlyRevenues.map(r => (
                   <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 text-sm text-slate-600">{new Date(r.date).toLocaleDateString('pt-BR')}</td>
                     <td className="px-6 py-4"><span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase rounded-md">Receita</span></td>
                     <td className="px-6 py-4 font-bold text-emerald-600">{formatCurrency(r.value)}</td>
                     <td className="px-6 py-4"><span className="text-xs text-slate-400">—</span></td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-right">
                       <button onClick={() => deleteRevenue(r.id)} className="text-slate-300 hover:text-rose-500 transition-colors">🗑️</button>
                     </td>
                   </tr>
                 ))}
-                {/* Expenses */}
                 {filteredData.monthlyExpenses.map(e => (
                   <tr key={e.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 text-sm text-slate-600">{new Date(e.dueDate).toLocaleDateString('pt-BR')}</td>
@@ -244,12 +253,11 @@ const App: React.FC = () => {
                         {e.status === Status.PAID ? 'Paga' : 'Pendente'}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-right">
                       <button onClick={() => deleteExpense(e.id)} className="text-slate-300 hover:text-rose-500 transition-colors">🗑️</button>
                     </td>
                   </tr>
                 ))}
-                {/* Installments in table? Optional, usually it's better in the Debts tab but let's show here too for completeness */}
                 {filteredData.monthlyInstallments.map(i => (
                   <tr key={i.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 text-sm text-slate-600">{new Date(i.dueDate).toLocaleDateString('pt-BR')}</td>
@@ -265,7 +273,7 @@ const App: React.FC = () => {
                         {i.status === Status.PAID ? 'Paga' : 'Pendente'}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-right">
                       <span className="text-slate-300">🔒</span>
                     </td>
                   </tr>
@@ -283,12 +291,12 @@ const App: React.FC = () => {
 
   const renderDebts = () => {
     return (
-      <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+      <div className="p-6 md:p-8 space-y-6 animate-in slide-in-from-right-4 duration-500">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-slate-800">Débitos Parcelados</h2>
           <button 
             onClick={() => setShowDebtForm(true)} 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 transition-all flex items-center gap-2"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all flex items-center gap-2"
           >
             <span>+</span> Novo Parcelamento
           </button>
@@ -301,7 +309,7 @@ const App: React.FC = () => {
             const progress = (paidCount / debt.installmentsCount) * 100;
 
             return (
-              <div key={debt.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4 group hover:border-indigo-200 transition-colors">
+              <div key={debt.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-4 group hover:border-indigo-200 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-bold text-slate-800 truncate max-w-[150px]">{debt.description}</h4>
@@ -323,12 +331,12 @@ const App: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-50 mt-2">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-slate-400 uppercase font-bold">Total</span>
                     <span className="text-lg font-bold text-indigo-600">{formatCurrency(debt.totalValue)}</span>
                   </div>
-                  <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                  <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
                     debt.status === 'ACTIVE' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'
                   }`}>
                     {debt.status === 'ACTIVE' ? 'Ativo' : 'Finalizado'}
@@ -337,41 +345,30 @@ const App: React.FC = () => {
               </div>
             );
           })}
-          {debts.length === 0 && (
-            <div className="col-span-full py-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400">
-               <span className="text-4xl mb-2">💳</span>
-               <p className="text-sm font-medium">Nenhum parcelamento cadastrado ainda.</p>
-            </div>
-          )}
         </div>
       </div>
     );
   };
 
-  return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      {/* Month Selector */}
-      <div className="mb-8 flex flex-wrap items-center gap-3">
-        <select 
-          className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-        >
-          {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
-            <option key={i} value={i}>{m}</option>
-          ))}
-        </select>
-        <select 
-          className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-        >
-          {[2023, 2024, 2025, 2026].map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+  const ResumoHeaderContent = (
+    <div className="bg-[#2196F3] text-white p-4 md:px-8 flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <button className="text-2xl hover:bg-white/10 w-10 h-10 flex items-center justify-center rounded-full transition-colors">‹</button>
+        <h2 className="text-xl font-bold tracking-tight">Resumo</h2>
       </div>
+      <div className="flex items-center gap-4">
+        <button className="text-2xl hover:bg-white/10 w-10 h-10 flex items-center justify-center rounded-full transition-colors">⋮</button>
+      </div>
+    </div>
+  );
 
+  return (
+    <Layout 
+      activeTab={activeTab} 
+      setActiveTab={setActiveTab}
+      headerContent={activeTab === 'dashboard' ? ResumoHeaderContent : undefined}
+      headerClassName={activeTab === 'dashboard' ? 'bg-[#2196F3]' : undefined}
+    >
       {activeTab === 'dashboard' && renderDashboard()}
       {activeTab === 'transactions' && renderTransactions()}
       {activeTab === 'debts' && renderDebts()}
