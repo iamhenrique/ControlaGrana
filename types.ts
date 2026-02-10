@@ -5,6 +5,7 @@ export enum TransactionType {
 }
 
 export enum Frequency {
+  DAILY = 'DAILY',
   WEEKLY = 'WEEKLY',
   BIWEEKLY = 'BIWEEKLY',
   MONTHLY = 'MONTHLY',
@@ -29,20 +30,25 @@ export interface Category {
 
 export interface Revenue {
   id: string;
+  description: string;
   value: number;
   date: string;
   categoryId: string;
+  status: Status;
   isRecurrent: boolean;
   frequency?: Frequency;
 }
 
 export interface SimpleExpense {
   id: string;
+  description: string;
   value: number;
   dueDate: string;
   categoryId: string;
   paymentMethod: string;
   status: Status;
+  isRecurrent: boolean;
+  frequency?: Frequency;
 }
 
 export interface Installment {
@@ -63,4 +69,5 @@ export interface InstallmentDebt {
   installmentsCount: number;
   installmentValue: number;
   status: DebtStatus;
+  categoryId?: string;
 }
