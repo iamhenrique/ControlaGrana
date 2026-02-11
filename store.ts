@@ -71,7 +71,7 @@ export const useFinanceStore = () => {
         supabase.from('expenses').select('*'),
         supabase.from('debts').select('*'),
         supabase.from('installments').select('*'),
-        supabase.from('categories').select('*')
+        supabase.from('categories').select('*').order('name', { ascending: true })
       ]);
 
       if (usrList) {
@@ -106,6 +106,41 @@ export const useFinanceStore = () => {
       if (data) setUsers(prev => [...prev, data[0]]);
     } catch (e) {
       console.error("ERRO AO ADICIONAR USUÁRIO:", e);
+    }
+  };
+
+  const addCategory = async (name: string, type: TransactionType) => {
+    const cleanName = name.trim();
+    if (!cleanName) return;
+
+    // Verificar duplicatas no cliente antes de tentar inserir
+    const exists = categories.some(c => c.name.toUpperCase() === cleanName.toUpperCase() && c.type === type);
+    if (exists) {
+        throw new Error("Categoria já cadastrada.");
+    }
+
+    try {
+      const { data, error } = await supabase.from('categories').insert([{ name: cleanName, type }]).select();
+      if (error) throw error;
+      if (data) {
+        setCategories(prev => [...prev, data[0]].sort((a, b) => a.name.localeCompare(b.name)));
+        return data[0];
+      }
+    } catch (e) {
+      console.error("ERRO AO ADICIONAR CATEGORIA:", e);
+      throw e;
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    try {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) throw error;
+      setCategories(prev => prev.filter(c => c.id !== id));
+      return true;
+    } catch (e) {
+      console.error("ERRO AO EXCLUIR CATEGORIA:", e);
+      throw e;
     }
   };
 
@@ -173,7 +208,6 @@ export const useFinanceStore = () => {
     if (!id) return false;
     setIsSyncing(true);
     try {
-      // Exclusão direta conforme solicitado para receitas
       const { error } = await supabase.from('revenues').delete().eq('id', id);
       if (error) throw error;
       setRevenues(prev => prev.filter(r => r.id !== id));
@@ -241,7 +275,6 @@ export const useFinanceStore = () => {
     if (!id) return false;
     setIsSyncing(true);
     try {
-      // Mantendo arquivamento apenas para despesas para segurança de dados, se desejar
       const item = expenses.find(e => e.id === id);
       if (item) {
         await supabase.from('transacao_inativas').insert([{
@@ -371,6 +404,7 @@ export const useFinanceStore = () => {
     isLoaded, isSyncing,
     addRevenue, updateRevenue, deleteRevenue,
     addExpense, updateExpense, deleteExpense,
-    addDebt, deleteDebt, toggleExpenseStatus, toggleRevenueStatus, refresh: fetchData
+    addDebt, deleteDebt, toggleExpenseStatus, toggleRevenueStatus,
+    addCategory, deleteCategory, refresh: fetchData
   };
 };

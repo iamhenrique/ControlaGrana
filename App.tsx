@@ -47,17 +47,23 @@ const App: React.FC = () => {
     users, currentUser, setCurrentUser, addUser,
     addRevenue, updateRevenue, deleteRevenue,
     addExpense, updateExpense, deleteExpense,
-    addDebt, deleteDebt, toggleExpenseStatus, toggleRevenueStatus
+    addDebt, deleteDebt, toggleExpenseStatus, toggleRevenueStatus,
+    addCategory, deleteCategory
   } = useFinanceStore();
 
-  const [showUserForm, setShowUserForm] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'users' | 'categories'>('users');
   const [showRevForm, setShowRevForm] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   
+  const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
+  const [quickCategoryType, setQuickCategoryType] = useState<TransactionType>(TransactionType.REVENUE);
+  const [categoryInput, setCategoryInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState<string | null>(null);
 
   const [isRevRecurrent, setIsRevRecurrent] = useState(false);
   const [isExpRecurrent, setIsExpRecurrent] = useState(false);
@@ -125,7 +131,7 @@ const App: React.FC = () => {
           className="w-8 h-8 flex items-center justify-center text-[#64748B] hover:text-[#0F172A] transition-colors text-xl"
         >›</button>
       </div>
-      <button onClick={() => setShowUserForm(true)} className="flex items-center gap-2 group">
+      <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 group">
           <span className="hidden sm:inline text-xs font-bold text-[#64748B] group-hover:text-[#0F172A] transition-colors uppercase">
             {currentUser?.nome || 'ENTRAR'}
           </span>
@@ -173,6 +179,29 @@ const App: React.FC = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleAddQuickCategory = async () => {
+    if (!categoryInput.trim()) return;
+    try {
+        await addCategory(categoryInput, quickCategoryType);
+        setCategoryInput('');
+        setShowQuickCategoryModal(false);
+    } catch (e: any) {
+        alert(e.message);
+    }
+  };
+
+  const handleCategoryDelete = async (id: string) => {
+      setIsDeleting(true);
+      try {
+          await deleteCategory(id);
+          setConfirmDeleteCategoryId(null);
+      } catch (err: any) {
+          alert("Não foi possível excluir esta categoria. Verifique se existem transações vinculadas a ela.");
+      } finally {
+          setIsDeleting(false);
+      }
   };
 
   if (!isLoaded) {
@@ -448,7 +477,10 @@ const App: React.FC = () => {
                     </div>
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[#64748B] uppercase px-0.5">CATEGORIA</label>
+                    <div className="flex items-center justify-between px-0.5">
+                        <label className="text-xs font-bold text-[#64748B] uppercase">CATEGORIA</label>
+                        <button type="button" onClick={() => { setQuickCategoryType(editingItem?.type === 'revenue' ? TransactionType.REVENUE : TransactionType.EXPENSE); setShowQuickCategoryModal(true); }} className="w-5 h-5 rounded-full bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center font-bold text-lg leading-none hover:bg-[#2563EB]/20 transition-all">+</button>
+                    </div>
                     <select name="category" defaultValue={editingItem?.categoryId} required className="w-full bg-[#F8FAFC] p-3 rounded-xl outline-none text-sm border border-[#E2E8F0] focus:border-[#2563EB] transition-all uppercase">
                         {categories.filter(c => c.type === (editingItem?.type === 'revenue' ? TransactionType.REVENUE : TransactionType.EXPENSE)).map(c => (
                             <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>
@@ -504,6 +536,24 @@ const App: React.FC = () => {
         </form>
       </Modal>
 
+      {/* MODAL DE NOVA CATEGORIA RÁPIDA */}
+      <Modal isOpen={showQuickCategoryModal} onClose={() => setShowQuickCategoryModal(false)} title="NOVA CATEGORIA">
+          <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#64748B] uppercase px-0.5">NOME DA CATEGORIA</label>
+                <input 
+                    value={categoryInput} 
+                    onChange={e => setCategoryInput(e.target.value)} 
+                    onKeyPress={e => e.key === 'Enter' && handleAddQuickCategory()}
+                    className="w-full bg-[#F8FAFC] p-4 rounded-xl outline-none text-sm border border-[#E2E8F0] focus:border-[#2563EB] transition-all uppercase" 
+                    placeholder="EX: PET, EDUCAÇÃO, ETC."
+                    autoFocus
+                />
+              </div>
+              <button onClick={handleAddQuickCategory} className="w-full bg-[#2563EB] text-white p-4 rounded-xl font-bold text-sm uppercase tracking-wider hover:bg-[#1d4ed8] transition-all">CRIAR CATEGORIA</button>
+          </div>
+      </Modal>
+
       <Modal isOpen={showRevForm} onClose={() => setShowRevForm(false)} title="NOVA RECEITA">
         <form onSubmit={async (e) => {
           e.preventDefault();
@@ -536,7 +586,10 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#64748B] uppercase px-0.5">CATEGORIA</label>
+            <div className="flex items-center justify-between px-0.5">
+                <label className="text-xs font-bold text-[#64748B] uppercase">CATEGORIA</label>
+                <button type="button" onClick={() => { setQuickCategoryType(TransactionType.REVENUE); setShowQuickCategoryModal(true); }} className="w-5 h-5 rounded-full bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center font-bold text-lg leading-none hover:bg-[#2563EB]/20 transition-all">+</button>
+            </div>
             <select name="category" required className="w-full bg-[#F8FAFC] p-3 rounded-xl outline-none text-sm border border-[#E2E8F0] focus:border-[#2563EB] transition-all uppercase">
                 <option value="">SELECIONE...</option>
                 {categories.filter(c => c.type === TransactionType.REVENUE).map(c => (
@@ -624,7 +677,10 @@ const App: React.FC = () => {
             </div>
           )}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#64748B] uppercase px-0.5">CATEGORIA</label>
+            <div className="flex items-center justify-between px-0.5">
+                <label className="text-xs font-bold text-[#64748B] uppercase">CATEGORIA</label>
+                <button type="button" onClick={() => { setQuickCategoryType(TransactionType.EXPENSE); setShowQuickCategoryModal(true); }} className="w-5 h-5 rounded-full bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center font-bold text-lg leading-none hover:bg-[#2563EB]/20 transition-all">+</button>
+            </div>
             <select name="category" required className="w-full bg-[#F8FAFC] p-3 rounded-xl outline-none text-sm border border-[#E2E8F0] focus:border-[#2563EB] transition-all uppercase">
                 <option value="">SELECIONE...</option>
                 {categories.filter(c => c.type === TransactionType.EXPENSE).map(c => (
@@ -636,37 +692,97 @@ const App: React.FC = () => {
         </form>
       </Modal>
 
-      <Modal isOpen={showUserForm} onClose={() => setShowUserForm(false)} title="PERFIS FAMILIARES">
-          <div className="space-y-4">
-              {users.map(u => (
-                  <button 
-                    key={u.id} 
-                    onClick={() => { setCurrentUser(u); setShowUserForm(false); }}
-                    className={`w-full flex items-center justify-between p-5 rounded-xl border transition-all ${currentUser?.id === u.id ? 'border-[#2563EB] bg-[#2563EB]/5 shadow-sm' : 'border-[#E2E8F0] hover:bg-[#F8FAFC]'}`}
-                  >
-                      <div className="flex items-center gap-4 text-left">
-                          <div className="w-10 h-10 bg-white border border-[#E2E8F0] rounded-full flex items-center justify-center font-bold text-sm text-[#64748B]">{u.nome?.[0]?.toUpperCase()}</div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-[#0F172A] uppercase">{u.nome}</span>
-                            <span className="text-[12px] font-normal text-[#64748B]">{u.email}</span>
-                          </div>
-                      </div>
-                      {currentUser?.id === u.id && <div className="w-2.5 h-2.5 bg-[#2563EB] rounded-full"></div>}
-                  </button>
-              ))}
-              <div className="pt-6 border-t border-[#E2E8F0]">
-                  <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      const fd = new FormData(e.currentTarget);
-                      await addUser(String(fd.get('nome')), String(fd.get('email')));
-                      e.currentTarget.reset();
-                  }} className="space-y-3">
-                      <input name="nome" placeholder="NOME DO MEMBRO" required className="w-full bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl outline-none text-sm uppercase" />
-                      <input name="email" type="email" placeholder="E-MAIL" required className="w-full bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl outline-none text-sm uppercase" />
-                      <button type="submit" className="w-full bg-[#2563EB] text-white p-4 rounded-xl font-bold text-sm uppercase tracking-wider hover:bg-[#1d4ed8] transition-all">NOVO PERFIL</button>
-                  </form>
-              </div>
+      <Modal isOpen={showSettingsModal} onClose={() => { setShowSettingsModal(false); setConfirmDeleteCategoryId(null); }} title="CONFIGURAÇÕES">
+          <div className="flex border-b border-[#E2E8F0] mb-6">
+              <button onClick={() => setSettingsTab('users')} className={`flex-1 py-3 text-[10px] font-bold tracking-widest transition-all ${settingsTab === 'users' ? 'text-[#2563EB] border-b-2 border-[#2563EB]' : 'text-[#64748B]'}`}>PERFIS FAMILIARES</button>
+              <button onClick={() => setSettingsTab('categories')} className={`flex-1 py-3 text-[10px] font-bold tracking-widest transition-all ${settingsTab === 'categories' ? 'text-[#2563EB] border-b-2 border-[#2563EB]' : 'text-[#64748B]'}`}>CATEGORIAS</button>
           </div>
+
+          {settingsTab === 'users' ? (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="max-h-[300px] overflow-y-auto space-y-3 pr-1 hide-scrollbar">
+                    {users.map(u => (
+                        <button 
+                            key={u.id} 
+                            onClick={() => { setCurrentUser(u); setShowSettingsModal(false); }}
+                            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${currentUser?.id === u.id ? 'border-[#2563EB] bg-[#2563EB]/5 shadow-sm' : 'border-[#E2E8F0] hover:bg-[#F8FAFC]'}`}
+                        >
+                            <div className="flex items-center gap-4 text-left">
+                                <div className="w-9 h-9 bg-white border border-[#E2E8F0] rounded-full flex items-center justify-center font-bold text-sm text-[#64748B]">{u.nome?.[0]?.toUpperCase()}</div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-[#0F172A] uppercase">{u.nome}</span>
+                                    <span className="text-[10px] font-medium text-[#64748B]">{u.email}</span>
+                                </div>
+                            </div>
+                            {currentUser?.id === u.id && <div className="w-2.5 h-2.5 bg-[#2563EB] rounded-full"></div>}
+                        </button>
+                    ))}
+                  </div>
+                  <div className="pt-6 border-t border-[#E2E8F0]">
+                      <form onSubmit={async (e) => {
+                          e.preventDefault();
+                          const fd = new FormData(e.currentTarget);
+                          await addUser(String(fd.get('nome')), String(fd.get('email')));
+                          e.currentTarget.reset();
+                      }} className="space-y-3">
+                          <input name="nome" placeholder="NOME DO MEMBRO" required className="w-full bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl outline-none text-sm uppercase" />
+                          <input name="email" type="email" placeholder="E-MAIL" required className="w-full bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl outline-none text-sm uppercase" />
+                          <button type="submit" className="w-full bg-[#2563EB] text-white p-4 rounded-xl font-bold text-sm uppercase tracking-wider hover:bg-[#1d4ed8] transition-all">NOVO PERFIL</button>
+                      </form>
+                  </div>
+              </div>
+          ) : (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 hide-scrollbar">
+                    {categories.map(c => (
+                        <div key={c.id} className="w-full flex items-center justify-between p-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] transition-all group overflow-hidden">
+                            <div className="flex flex-col">
+                                <span className="text-xs font-bold text-[#0F172A] uppercase">{c.name}</span>
+                                <span className={`text-[8px] font-black tracking-widest uppercase ${c.type === TransactionType.REVENUE ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>{c.type === TransactionType.REVENUE ? 'RECEITA' : 'DESPESA'}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                {confirmDeleteCategoryId === c.id ? (
+                                    <div className="flex items-center gap-1.5 animate-in slide-in-from-right-4 duration-200">
+                                        <button onClick={() => handleCategoryDelete(c.id)} className="bg-[#DC2626] text-white text-[9px] font-bold px-2 py-1.5 rounded-lg uppercase shadow-sm">OK</button>
+                                        <button onClick={() => setConfirmDeleteCategoryId(null)} className="bg-white border border-[#E2E8F0] text-[#64748B] text-[9px] font-bold px-2 py-1.5 rounded-lg uppercase">X</button>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => setConfirmDeleteCategoryId(c.id)} className="w-7 h-7 flex items-center justify-center rounded-full text-[#64748B] hover:text-[#DC2626] hover:bg-[#DC2626]/10 transition-all opacity-0 group-hover:opacity-100">✕</button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                  </div>
+                  <div className="pt-6 border-t border-[#E2E8F0]">
+                      <form onSubmit={async (e) => {
+                          e.preventDefault();
+                          const fd = new FormData(e.currentTarget);
+                          const name = String(fd.get('name'));
+                          const type = fd.get('type') as TransactionType;
+                          try {
+                              await addCategory(name, type);
+                              e.currentTarget.reset();
+                          } catch (err: any) {
+                              alert(err.message);
+                          }
+                      }} className="space-y-3">
+                          <input name="name" placeholder="NOME DA CATEGORIA" required className="w-full bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl outline-none text-sm uppercase" />
+                          <div className="grid grid-cols-2 gap-3">
+                              <label className="relative flex items-center justify-center p-3 rounded-xl border border-[#E2E8F0] cursor-pointer hover:bg-[#F8FAFC] transition-all has-[:checked]:bg-[#16A34A]/5 has-[:checked]:border-[#16A34A]">
+                                  <input type="radio" name="type" value={TransactionType.REVENUE} required className="sr-only" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#16A34A]">RECEITA</span>
+                              </label>
+                              <label className="relative flex items-center justify-center p-3 rounded-xl border border-[#E2E8F0] cursor-pointer hover:bg-[#F8FAFC] transition-all has-[:checked]:bg-[#DC2626]/5 has-[:checked]:border-[#DC2626]">
+                                  <input type="radio" name="type" value={TransactionType.EXPENSE} required className="sr-only" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#DC2626]">DESPESA</span>
+                              </label>
+                          </div>
+                          <button type="submit" className="w-full bg-[#0F172A] text-white p-4 rounded-xl font-bold text-sm uppercase tracking-wider hover:bg-black transition-all">NOVA CATEGORIA</button>
+                      </form>
+                  </div>
+              </div>
+          )}
       </Modal>
     </Layout>
   );
