@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Credenciais do projeto ControlaGrana
+// Credenciais oficiais do projeto ControlaGrana
 const supabaseUrl = 'https://oeolbhvxgsymlnvrmlsx.supabase.co';
 const supabaseAnonKey = 'sb_publishable_k-K-uK2D94SaCyjozMmE4Q_8NFqXKCA';
 
