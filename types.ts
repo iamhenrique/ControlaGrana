@@ -22,14 +22,31 @@ export enum DebtStatus {
   FINISHED = 'FINISHED'
 }
 
+export interface User {
+  id: string;
+  nome: string;
+  email: string;
+  criado_em: string;
+}
+
 export interface Category {
   id: string;
   name: string;
   type: TransactionType;
 }
 
+export interface Budget {
+  id: string;
+  userId: string;
+  categoryId: string;
+  limitValue: number;
+  month: number;
+  year: number;
+}
+
 export interface Revenue {
   id: string;
+  userId?: string;
   description: string;
   value: number;
   date: string;
@@ -41,6 +58,7 @@ export interface Revenue {
 
 export interface SimpleExpense {
   id: string;
+  userId?: string;
   description: string;
   value: number;
   dueDate: string;
@@ -62,6 +80,7 @@ export interface Installment {
 
 export interface InstallmentDebt {
   id: string;
+  userId?: string;
   description: string;
   totalValue: number;
   startDate: string;
