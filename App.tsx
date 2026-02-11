@@ -95,7 +95,7 @@ const App: React.FC = () => {
   // Estados de Recorrência para Despesa
   const [isExpRecurrent, setIsExpRecurrent] = useState(false);
   const [expFrequency, setExpFrequency] = useState<Frequency>(Frequency.MONTHLY);
-  const [expRecurrenceCount, setExpRecurrenceCount] = useState(12);
+  const [expRecurrenceCount, setRevRecurrenceCountExp] = useState(12);
   const [isExpInstallment, setIsExpInstallment] = useState(false);
 
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -471,7 +471,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL DE NOVA RECEITA COM FREQUÊNCIA E RECORRÊNCIA FLEXÍVEL */}
+      {/* MODAL DE NOVA RECEITA COM FREQUÊNCIA E RECORRENTE FLEXÍVEL */}
       <Modal isOpen={showRevForm} onClose={() => setShowRevForm(false)} title="NOVA RECEITA">
         <form onSubmit={async (e) => {
           e.preventDefault();
@@ -525,10 +525,7 @@ const App: React.FC = () => {
           
           <div className="space-y-3">
               <div className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[#0F172A] uppercase tracking-wide">RECORRÊNCIA</span>
-                    <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-widest">HABILITAR LANÇAMENTOS MÚLTIPLOS</span>
-                </div>
+                <span className="text-xs font-bold text-[#0F172A] uppercase tracking-wide">RECORRENTE</span>
                 <Toggle enabled={isRevRecurrent} onChange={setIsRevRecurrent} activeColorClass="bg-[#16A34A]" />
               </div>
               
@@ -571,7 +568,7 @@ const App: React.FC = () => {
         </form>
       </Modal>
 
-      {/* MODAL DE NOVA DESPESA COM FREQUÊNCIA E RECORRÊNCIA FLEXÍVEL */}
+      {/* MODAL DE NOVA DESPESA COM FREQUÊNCIA E RECORRENTE FLEXÍVEL */}
       <Modal isOpen={showExpForm} onClose={() => setShowExpForm(false)} title="NOVA DESPESA">
         <form onSubmit={async (e) => {
           e.preventDefault();
@@ -648,7 +645,7 @@ const App: React.FC = () => {
                             min="1" 
                             max="120"
                             value={expRecurrenceCount} 
-                            onChange={(e) => setExpRecurrenceCount(Number(e.target.value))}
+                            onChange={(e) => setRevRecurrenceCountExp(Number(e.target.value))}
                             className="w-20 bg-white border border-[#E2E8F0] rounded-lg p-2 text-center text-sm font-bold outline-none focus:border-[#2563EB]" 
                         />
                     </div>
