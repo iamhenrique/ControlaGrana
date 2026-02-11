@@ -42,7 +42,7 @@ export const useFinanceStore = () => {
     startDate: d.start_date,
     frequency: d.frequency,
     installmentsCount: d.installments_count,
-    installmentValue: Number(d.installment_value),
+    installment_value: Number(d.installment_value),
     status: d.status,
     categoryId: d.category_id
   });
@@ -113,7 +113,6 @@ export const useFinanceStore = () => {
     const cleanName = name.trim();
     if (!cleanName) return;
 
-    // Verificar duplicatas no cliente antes de tentar inserir
     const exists = categories.some(c => c.name.toUpperCase() === cleanName.toUpperCase() && c.type === type);
     if (exists) {
         throw new Error("Categoria já cadastrada.");
@@ -149,13 +148,14 @@ export const useFinanceStore = () => {
     d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
     if (freq === Frequency.DAILY) d.setDate(d.getDate() + index);
     if (freq === Frequency.WEEKLY) d.setDate(d.getDate() + index * 7);
+    if (freq === Frequency.BIWEEKLY) d.setDate(d.getDate() + index * 15);
     if (freq === Frequency.MONTHLY) d.setMonth(d.getMonth() + index);
     if (freq === Frequency.YEARLY) d.setFullYear(d.getFullYear() + index);
     return d.toISOString().split('T')[0];
   };
 
-  const addRevenue = async (rev: Omit<Revenue, 'id'>, repetitions: number = 1) => {
-    if (!currentUser) return;
+  const addRevenue = async (rev: Omit<Revenue, 'id'>, repetitions: number = 1): Promise<boolean> => {
+    if (!currentUser) return false;
     setIsSyncing(true);
     try {
       const newRevs = [];
@@ -174,9 +174,14 @@ export const useFinanceStore = () => {
       }
       const { data, error } = await supabase.from('revenues').insert(newRevs).select();
       if (error) throw error;
-      if (data) setRevenues(prev => [...prev, ...data.map(mapRevenue)]);
+      if (data) {
+        setRevenues(prev => [...prev, ...data.map(mapRevenue)]);
+        return true;
+      }
+      return false;
     } catch (e) {
       console.error("ERRO AO ADICIONAR RECEITA:", e);
+      return false;
     } finally {
       setIsSyncing(false);
     }
@@ -220,8 +225,8 @@ export const useFinanceStore = () => {
     }
   };
 
-  const addExpense = async (exp: Omit<SimpleExpense, 'id'>, repetitions: number = 1) => {
-    if (!currentUser) return;
+  const addExpense = async (exp: Omit<SimpleExpense, 'id'>, repetitions: number = 1): Promise<boolean> => {
+    if (!currentUser) return false;
     setIsSyncing(true);
     try {
       const newExps = [];
@@ -241,9 +246,14 @@ export const useFinanceStore = () => {
       }
       const { data, error } = await supabase.from('expenses').insert(newExps).select();
       if (error) throw error;
-      if (data) setExpenses(prev => [...prev, ...data.map(mapExpense)]);
+      if (data) {
+        setExpenses(prev => [...prev, ...data.map(mapExpense)]);
+        return true;
+      }
+      return false;
     } catch (e) {
       console.error("ERRO AO ADICIONAR DESPESA:", e);
+      return false;
     } finally {
       setIsSyncing(false);
     }
@@ -305,8 +315,8 @@ export const useFinanceStore = () => {
     }
   };
 
-  const addDebt = async (debt: Omit<InstallmentDebt, 'id' | 'status' | 'installmentValue'>) => {
-    if (!currentUser) return;
+  const addDebt = async (debt: Omit<InstallmentDebt, 'id' | 'status' | 'installmentValue'>): Promise<boolean> => {
+    if (!currentUser) return false;
     setIsSyncing(true);
     try {
       const installmentValue = debt.totalValue / debt.installmentsCount;
@@ -332,9 +342,12 @@ export const useFinanceStore = () => {
           if (instError) throw instError;
           setDebts(prev => [...prev, mapDebt(newDebt)]);
           if (instData) setInstallments(prev => [...prev, ...instData.map(mapInstallment)]);
+          return true;
       }
+      return false;
     } catch (e) {
       console.error("ERRO AO ATUALIZAR DÍVIDA:", e);
+      return false;
     } finally {
       setIsSyncing(false);
     }
