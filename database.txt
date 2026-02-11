@@ -1,10 +1,11 @@
+
 -- =====================================================
--- CONTROLAGRANA | SCHEMA DEFINITIVO
+-- CONTROLAGRANA | SCHEMA SQL COMPLETO
 -- =====================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. TABELA DE USUÁRIOS (PERFIS FAMILIARES)
+-- 1. TABELA DE USUÁRIOS
 CREATE TABLE IF NOT EXISTS usuarios (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     nome text NOT NULL,
@@ -34,7 +35,7 @@ CREATE TABLE IF NOT EXISTS revenues (
     created_at timestamp with time zone DEFAULT now()
 );
 
--- 4. TABELA DE DESPESAS (AVULSAS E RECORRENTES)
+-- 4. TABELA DE DESPESAS
 CREATE TABLE IF NOT EXISTS expenses (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id uuid NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -75,68 +76,38 @@ CREATE TABLE IF NOT EXISTS installments (
     created_at timestamp with time zone DEFAULT now()
 );
 
--- 7. TABELA DE ORÇAMENTOS (METAS)
-CREATE TABLE IF NOT EXISTS budgets (
-    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id uuid NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    category_id uuid NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-    limit_value numeric NOT NULL CHECK (limit_value >= 0),
-    month integer NOT NULL CHECK (month >= 0 AND month <= 11),
-    year integer NOT NULL,
-    UNIQUE(user_id, category_id, month, year)
-);
-
--- 8. TABELA DE TRANSAÇÕES INATIVAS (HISTÓRICO COMPLETO)
--- Contém todas as colunas de receitas e despesas para preservação total de dados
+-- 7. TABELA DE TRANSAÇÕES INATIVAS (HISTÓRICO)
 CREATE TABLE IF NOT EXISTS transacao_inativas (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    original_id uuid,                      -- ID que o registro tinha na tabela original
+    original_id uuid,
     user_id uuid REFERENCES usuarios(id) ON DELETE CASCADE,
     tipo_original text NOT NULL CHECK (tipo_original IN ('RECEITA', 'DESPESA', 'PARCELA')),
     description text NOT NULL,
     value numeric NOT NULL,
-    data_referencia date NOT NULL,         -- Mapeia 'date' de receitas ou 'due_date' de despesas
+    data_referencia date NOT NULL,
     category_id uuid REFERENCES categories(id) ON DELETE SET NULL,
-    status_no_momento text,                -- Status (PAID/PENDING) antes da inativação
+    status_no_momento text,
     is_recurrent boolean DEFAULT false,
     frequency text,
-    payment_method text,                   -- Campo vindo da tabela de despesas
-    motivo_inativacao text,                -- Ex: 'Exclusão via App', 'Estorno Administrativo'
-    criado_em_original timestamp with time zone, -- Data original de criação do registro
+    payment_method text,
+    motivo_inativacao text,
+    criado_em_original timestamp with time zone,
     inativado_em timestamp with time zone DEFAULT now()
 );
 
--- SEGURANÇA: ROW LEVEL SECURITY
+-- RLS E POLÍTICAS
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE revenues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE debts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE installments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transacao_inativas ENABLE ROW LEVEL SECURITY;
 
--- POLÍTICAS DE ACESSO PÚBLICO (CONFIGURAÇÃO PARA MVP)
 CREATE POLICY "Public Access Usuarios" ON usuarios FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Categories" ON categories FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Revenues" ON revenues FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Debts" ON debts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Installments" ON installments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public Access Budgets" ON budgets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access TransacoesInativas" ON transacao_inativas FOR ALL USING (true) WITH CHECK (true);
-
--- DADOS INICIAIS DE CATEGORIAS
-INSERT INTO categories (name, type) VALUES 
-('SALÁRIO', 'REVENUE'),
-('BÔNUS', 'REVENUE'),
-('INVESTIMENTOS', 'REVENUE'),
-('ALIMENTAÇÃO', 'EXPENSE'),
-('MORADIA', 'EXPENSE'),
-('TRANSPORTE', 'EXPENSE'),
-('LAZER', 'EXPENSE'),
-('SAÚDE', 'EXPENSE'),
-('EDUCAÇÃO', 'EXPENSE'),
-('ASSINATURAS', 'EXPENSE'),
-('OUTROS', 'EXPENSE')
-ON CONFLICT DO NOTHING;

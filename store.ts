@@ -19,7 +19,6 @@ export const useFinanceStore = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Auxiliar para converter nomes de campos do Banco para o Frontend
   const mapRevenue = (r: any): Revenue => ({
     ...r,
     userId: r.user_id,
@@ -39,10 +38,12 @@ export const useFinanceStore = () => {
   const mapDebt = (d: any): InstallmentDebt => ({
     ...d,
     userId: d.user_id,
-    totalValue: d.total_value,
+    totalValue: Number(d.total_value),
     startDate: d.start_date,
+    frequency: d.frequency,
     installmentsCount: d.installments_count,
-    installmentValue: d.installment_value,
+    installmentValue: Number(d.installment_value),
+    status: d.status,
     categoryId: d.category_id
   });
 
@@ -50,14 +51,8 @@ export const useFinanceStore = () => {
     ...i,
     debtId: i.debt_id,
     installmentNumber: i.installment_number,
-    dueDate: i.due_date
-  });
-
-  const mapBudget = (b: any): Budget => ({
-    ...b,
-    userId: b.user_id,
-    categoryId: b.category_id,
-    limitValue: b.limit_value
+    dueDate: i.due_date,
+    value: Number(i.value)
   });
 
   const fetchData = async () => {
@@ -69,16 +64,14 @@ export const useFinanceStore = () => {
         { data: exps },
         { data: dbtList },
         { data: instList },
-        { data: cats },
-        { data: budList }
+        { data: cats }
       ] = await Promise.all([
         supabase.from('usuarios').select('*'),
         supabase.from('revenues').select('*'),
         supabase.from('expenses').select('*'),
         supabase.from('debts').select('*'),
         supabase.from('installments').select('*'),
-        supabase.from('categories').select('*'),
-        supabase.from('budgets').select('*')
+        supabase.from('categories').select('*')
       ]);
 
       if (usrList) {
@@ -93,10 +86,9 @@ export const useFinanceStore = () => {
       if (dbtList) setDebts(dbtList.map(mapDebt));
       if (instList) setInstallments(instList.map(mapInstallment));
       if (cats) setCategories(cats);
-      if (budList) setBudgets(budList.map(mapBudget));
 
     } catch (e) {
-      console.error("Erro ao carregar do Supabase", e);
+      console.error("ERRO CRÍTICO AO CARREGAR DADOS:", e);
     } finally {
       setIsLoaded(true);
       setIsSyncing(false);
@@ -107,171 +99,278 @@ export const useFinanceStore = () => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (currentUser) localStorage.setItem('lastUserId', currentUser.id);
-  }, [currentUser]);
-
   const addUser = async (nome: string, email: string) => {
-    const { data, error } = await supabase.from('usuarios').insert([{ nome, email }]).select();
-    if (error) console.error("Erro ao adicionar usuário:", error);
-    if (data) {
-      setUsers(prev => [...prev, data[0]]);
-      if (!currentUser) setCurrentUser(data[0]);
+    try {
+      const { data, error } = await supabase.from('usuarios').insert([{ nome, email }]).select();
+      if (error) throw error;
+      if (data) setUsers(prev => [...prev, data[0]]);
+    } catch (e) {
+      console.error("ERRO AO ADICIONAR USUÁRIO:", e);
     }
   };
 
   const calculateNextDate = (baseDate: Date, index: number, freq: Frequency) => {
     const d = new Date(baseDate);
-    d.setMinutes(d.getMinutes() + d.getTimezoneOffset()); // Ajuste de fuso horário
+    d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
     if (freq === Frequency.DAILY) d.setDate(d.getDate() + index);
     if (freq === Frequency.WEEKLY) d.setDate(d.getDate() + index * 7);
-    if (freq === Frequency.BIWEEKLY) d.setDate(d.getDate() + index * 15);
     if (freq === Frequency.MONTHLY) d.setMonth(d.getMonth() + index);
     if (freq === Frequency.YEARLY) d.setFullYear(d.getFullYear() + index);
     return d.toISOString().split('T')[0];
   };
 
   const addRevenue = async (rev: Omit<Revenue, 'id'>, repetitions: number = 1) => {
-    if (!currentUser) { alert("Selecione um membro antes!"); return; }
+    if (!currentUser) return;
     setIsSyncing(true);
-    const newRevs = [];
-    const baseDate = new Date(rev.date);
-    
-    for (let i = 0; i < repetitions; i++) {
-      newRevs.push({
-        user_id: currentUser.id,
+    try {
+      const newRevs = [];
+      const baseDate = new Date(rev.date);
+      for (let i = 0; i < repetitions; i++) {
+        newRevs.push({
+          user_id: currentUser.id,
+          description: rev.description,
+          value: rev.value,
+          date: calculateNextDate(baseDate, i, rev.frequency || Frequency.MONTHLY),
+          category_id: rev.categoryId,
+          status: rev.status,
+          is_recurrent: rev.isRecurrent,
+          frequency: rev.frequency
+        });
+      }
+      const { data, error } = await supabase.from('revenues').insert(newRevs).select();
+      if (error) throw error;
+      if (data) setRevenues(prev => [...prev, ...data.map(mapRevenue)]);
+    } catch (e) {
+      console.error("ERRO AO ADICIONAR RECEITA:", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const updateRevenue = async (id: string, rev: Partial<Revenue>) => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.from('revenues').update({
         description: rev.description,
         value: rev.value,
-        date: calculateNextDate(baseDate, i, rev.frequency || Frequency.MONTHLY),
+        date: rev.date,
         category_id: rev.categoryId,
-        status: rev.status,
-        is_recurrent: rev.isRecurrent,
-        frequency: rev.frequency
-      });
+        status: rev.status
+      }).eq('id', id).select();
+      
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setRevenues(prev => prev.map(r => r.id === id ? mapRevenue(data[0]) : r));
+      }
+    } catch (e) {
+      console.error("ERRO AO ATUALIZAR RECEITA:", e);
+    } finally {
+      setIsSyncing(false);
     }
+  };
 
-    const { data, error } = await supabase.from('revenues').insert(newRevs).select();
-    if (error) console.error("Erro ao inserir receita:", error);
-    if (data) setRevenues(prev => [...prev, ...data.map(mapRevenue)]);
-    setIsSyncing(false);
+  const deleteRevenue = async (id: string) => {
+    if (!id) return false;
+    setIsSyncing(true);
+    try {
+      // Exclusão direta conforme solicitado para receitas
+      const { error } = await supabase.from('revenues').delete().eq('id', id);
+      if (error) throw error;
+      setRevenues(prev => prev.filter(r => r.id !== id));
+      return true;
+    } catch (e) {
+      console.error("STORE: FALHA AO EXCLUIR RECEITA:", e);
+      throw e;
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const addExpense = async (exp: Omit<SimpleExpense, 'id'>, repetitions: number = 1) => {
-    if (!currentUser) { alert("Selecione um membro antes!"); return; }
+    if (!currentUser) return;
     setIsSyncing(true);
-    const newExps = [];
-    const baseDate = new Date(exp.dueDate);
+    try {
+      const newExps = [];
+      const baseDate = new Date(exp.dueDate);
+      for (let i = 0; i < repetitions; i++) {
+        newExps.push({
+          user_id: currentUser.id,
+          description: exp.description,
+          value: exp.value,
+          due_date: calculateNextDate(baseDate, i, exp.frequency || Frequency.MONTHLY),
+          category_id: exp.categoryId,
+          payment_method: exp.paymentMethod || 'PIX',
+          status: exp.status,
+          is_recurrent: exp.isRecurrent,
+          frequency: exp.frequency
+        });
+      }
+      const { data, error } = await supabase.from('expenses').insert(newExps).select();
+      if (error) throw error;
+      if (data) setExpenses(prev => [...prev, ...data.map(mapExpense)]);
+    } catch (e) {
+      console.error("ERRO AO ADICIONAR DESPESA:", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
-    for (let i = 0; i < repetitions; i++) {
-      newExps.push({
-        user_id: currentUser.id,
+  const updateExpense = async (id: string, exp: Partial<SimpleExpense>) => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.from('expenses').update({
         description: exp.description,
         value: exp.value,
-        due_date: calculateNextDate(baseDate, i, exp.frequency || Frequency.MONTHLY),
+        due_date: exp.dueDate,
         category_id: exp.categoryId,
-        payment_method: exp.paymentMethod || 'PIX',
-        status: exp.status,
-        is_recurrent: exp.isRecurrent,
-        frequency: exp.frequency
-      });
+        status: exp.status
+      }).eq('id', id).select();
+      
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setExpenses(prev => prev.map(e => e.id === id ? mapExpense(data[0]) : e));
+      }
+    } catch (e) {
+      console.error("ERRO AO ATUALIZAR DESPESA:", e);
+    } finally {
+      setIsSyncing(false);
     }
+  };
 
-    const { data, error } = await supabase.from('expenses').insert(newExps).select();
-    if (error) console.error("Erro ao inserir despesa:", error);
-    if (data) setExpenses(prev => [...prev, ...data.map(mapExpense)]);
-    setIsSyncing(false);
+  const deleteExpense = async (id: string) => {
+    if (!id) return false;
+    setIsSyncing(true);
+    try {
+      // Mantendo arquivamento apenas para despesas para segurança de dados, se desejar
+      const item = expenses.find(e => e.id === id);
+      if (item) {
+        await supabase.from('transacao_inativas').insert([{
+          original_id: item.id,
+          user_id: item.userId,
+          tipo_original: 'DESPESA',
+          description: item.description,
+          value: item.value,
+          data_referencia: item.dueDate,
+          category_id: item.categoryId,
+          status_no_momento: item.status,
+          is_recurrent: item.isRecurrent,
+          frequency: item.frequency,
+          payment_method: item.paymentMethod,
+          motivo_inativacao: 'Exclusão via App',
+          criado_em_original: (item as any).created_at
+        }]);
+      }
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.filter(e => e.id !== id));
+      return true;
+    } catch (e) {
+      console.error("STORE: FALHA AO EXCLUIR DESPESA:", e);
+      throw e;
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const addDebt = async (debt: Omit<InstallmentDebt, 'id' | 'status' | 'installmentValue'>) => {
-    if (!currentUser) { alert("Selecione um membro antes!"); return; }
-    setIsSyncing(true);
-    const installmentValue = debt.totalValue / debt.installmentsCount;
-    
-    const { data: debtData, error: dError } = await supabase.from('debts').insert([{
-        user_id: currentUser.id,
-        description: debt.description,
-        total_value: debt.totalValue,
-        start_date: debt.startDate,
-        frequency: debt.frequency,
-        installments_count: debt.installmentsCount,
-        installment_value: installmentValue,
-        status: DebtStatus.ACTIVE,
-        category_id: debt.categoryId
-    }]).select();
-
-    if (dError) console.error("Erro ao criar dívida:", dError);
-
-    if (debtData) {
-        const newDebt = debtData[0];
-        const insts = generateInstallments(
-            newDebt.id, 
-            debt.totalValue, 
-            debt.installmentsCount, 
-            debt.startDate, 
-            debt.frequency
-        ).map(i => ({
-            id: i.id,
-            debt_id: i.debtId,
-            installment_number: i.installmentNumber,
-            value: i.value,
-            due_date: i.dueDate,
-            status: i.status
-        }));
-
-        const { data: instData, error: iError } = await supabase.from('installments').insert(insts).select();
-        if (iError) console.error("Erro ao criar parcelas:", iError);
-        
-        setDebts(prev => [...prev, mapDebt(newDebt)]);
-        if (instData) {
-            setInstallments(prev => [...prev, ...instData.map(mapInstallment)]);
-        }
-    }
-    setIsSyncing(false);
-  };
-
-  const setBudget = async (categoryId: string, limitValue: number, month: number, year: number) => {
     if (!currentUser) return;
     setIsSyncing(true);
-    
-    const existing = budgets.find(b => b.categoryId === categoryId && b.month === month && b.year === year && b.userId === currentUser.id);
-    
-    if (existing) {
-        const { data } = await supabase.from('budgets').update({ limit_value: limitValue }).eq('id', existing.id).select();
-        if (data) setBudgets(prev => prev.map(b => b.id === existing.id ? mapBudget(data[0]) : b));
-    } else {
-        const { data } = await supabase.from('budgets').insert([{
-            user_id: currentUser.id,
-            category_id: categoryId,
-            limit_value: limitValue,
-            month,
-            year
-        }]).select();
-        if (data) setBudgets(prev => [...prev, mapBudget(data[0])]);
+    try {
+      const installmentValue = debt.totalValue / debt.installmentsCount;
+      const { data: debtData, error: debtError } = await supabase.from('debts').insert([{
+          user_id: currentUser.id,
+          description: debt.description,
+          total_value: debt.totalValue,
+          start_date: debt.startDate,
+          frequency: debt.frequency,
+          installments_count: debt.installmentsCount,
+          installment_value: installmentValue,
+          status: DebtStatus.ACTIVE,
+          category_id: debt.categoryId
+      }]).select();
+
+      if (debtError) throw debtError;
+
+      if (debtData) {
+          const newDebt = debtData[0];
+          const insts = generateInstallments(newDebt.id, debt.totalValue, debt.installmentsCount, debt.startDate, debt.frequency)
+              .map(i => ({ id: i.id, debt_id: i.debtId, installment_number: i.installmentNumber, value: i.value, due_date: i.dueDate, status: i.status }));
+          const { data: instData, error: instError } = await supabase.from('installments').insert(insts).select();
+          if (instError) throw instError;
+          setDebts(prev => [...prev, mapDebt(newDebt)]);
+          if (instData) setInstallments(prev => [...prev, ...instData.map(mapInstallment)]);
+      }
+    } catch (e) {
+      console.error("ERRO AO ATUALIZAR DÍVIDA:", e);
+    } finally {
+      setIsSyncing(false);
     }
-    setIsSyncing(false);
+  };
+
+  const deleteDebt = async (id: string) => {
+    if (!id) return false;
+    setIsSyncing(true);
+    try {
+      const item = debts.find(d => d.id === id);
+      if (item) {
+        await supabase.from('transacao_inativas').insert([{
+          original_id: item.id,
+          user_id: item.userId,
+          tipo_original: 'PARCELA',
+          description: `PLANO: ${item.description}`,
+          value: item.totalValue,
+          data_referencia: item.startDate,
+          category_id: item.categoryId,
+          status_no_momento: item.status,
+          motivo_inativacao: 'Exclusão de Plano Completo',
+          criado_em_original: (item as any).created_at
+        }]);
+      }
+      const { error } = await supabase.from('debts').delete().eq('id', id);
+      if (error) throw error;
+      setDebts(prev => prev.filter(d => d.id !== id));
+      setInstallments(prev => prev.filter(i => i.debtId !== id));
+      return true;
+    } catch (e) {
+      console.error("STORE: FALHA AO EXCLUIR PARCELAMENTO:", e);
+      throw e;
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const toggleExpenseStatus = async (id: string) => {
-    const exp = expenses.find(e => e.id === id);
-    if (!exp) return;
-    const newStatus = exp.status === Status.PAID ? Status.PENDING : Status.PAID;
-    await supabase.from('expenses').update({ status: newStatus }).eq('id', id);
-    setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e));
+    try {
+      const exp = expenses.find(e => e.id === id);
+      if (!exp) return;
+      const newStatus = exp.status === Status.PAID ? Status.PENDING : Status.PAID;
+      const { error } = await supabase.from('expenses').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e));
+    } catch (e) {
+      console.error("ERRO AO ALTERNAR STATUS DA DESPESA:", e);
+    }
   };
 
   const toggleRevenueStatus = async (id: string) => {
-    const rev = revenues.find(r => r.id === id);
-    if (!rev) return;
-    const newStatus = rev.status === Status.PAID ? Status.PENDING : Status.PAID;
-    await supabase.from('revenues').update({ status: newStatus }).eq('id', id);
-    setRevenues(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    try {
+      const rev = revenues.find(r => r.id === id);
+      if (!rev) return;
+      const newStatus = rev.status === Status.PAID ? Status.PENDING : Status.PAID;
+      const { error } = await supabase.from('revenues').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
+      setRevenues(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    } catch (e) {
+      console.error("ERRO AO ALTERNAR STATUS DA RECEITA:", e);
+    }
   };
 
   return {
     users, currentUser, setCurrentUser, addUser,
     revenues, expenses, debts, installments, categories, budgets,
-    isLoaded, isSyncing, setBudget,
-    addRevenue, addExpense, addDebt, 
-    toggleExpenseStatus, toggleRevenueStatus, refresh: fetchData
+    isLoaded, isSyncing,
+    addRevenue, updateRevenue, deleteRevenue,
+    addExpense, updateExpense, deleteExpense,
+    addDebt, deleteDebt, toggleExpenseStatus, toggleRevenueStatus, refresh: fetchData
   };
 };

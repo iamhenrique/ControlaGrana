@@ -54,6 +54,7 @@ export interface Revenue {
   status: Status;
   isRecurrent: boolean;
   frequency?: Frequency;
+  created_at?: string;
 }
 
 export interface SimpleExpense {
@@ -67,6 +68,7 @@ export interface SimpleExpense {
   status: Status;
   isRecurrent: boolean;
   frequency?: Frequency;
+  created_at?: string;
 }
 
 export interface Installment {
@@ -89,4 +91,23 @@ export interface InstallmentDebt {
   installmentValue: number;
   status: DebtStatus;
   categoryId?: string;
+  created_at?: string;
+}
+
+export interface InactiveTransaction {
+  id: string;
+  originalId?: string;
+  userId: string;
+  tipoOriginal: 'RECEITA' | 'DESPESA' | 'PARCELA';
+  description: string;
+  value: number;
+  dataReferencia: string;
+  categoryId?: string;
+  statusNoMomento?: string;
+  isRecurrent?: boolean;
+  frequency?: string;
+  paymentMethod?: string;
+  motivoInativacao?: string;
+  criadoEmOriginal?: string;
+  inativadoEm: string;
 }
