@@ -102,6 +102,7 @@ const App: React.FC = () => {
   }, [revenues, expenses, installments, categories, budgets, currentUser, selectedMonth, selectedYear]);
 
   const generateAIInsight = async () => {
+    if (!currentUser) return;
     setIsAnalyzing(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -164,6 +165,16 @@ const App: React.FC = () => {
     <Layout activeTab={activeTab} setActiveTab={setActiveTab} headerContent={VisaoGeralHeader} headerClassName="bg-[#2196F3]">
       {activeTab === 'dashboard' && (
         <div className="p-6 md:p-10 space-y-10 animate-in fade-in duration-700">
+          {!currentUser && (
+            <div className="bg-amber-50 border border-amber-200 p-6 rounded-[2rem] flex items-center gap-4 text-amber-800">
+               <span className="text-2xl">⚠️</span>
+               <div>
+                  <p className="font-black uppercase text-[10px] tracking-widest">Atenção</p>
+                  <p className="text-xs font-bold mt-1">Você precisa cadastrar ou selecionar um membro no topo da página para começar a lançar transações.</p>
+               </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <ResumoCard title="Receitas" totalValue={filteredData.totalRevenue} subValues={[{ label: 'Garantido', value: filteredData.receivedRevenue }, { label: 'Estimado', value: filteredData.totalRevenue }]} accentColor="text-emerald-500" headerAction={<button onClick={() => setShowRevForm(true)} className="w-8 h-8 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-100 hover:rotate-90 transition-all font-black text-xl flex items-center justify-center">+</button>} />
             <ResumoCard title="Despesas" totalValue={filteredData.totalExpense} subValues={[{ label: 'Efetuado', value: filteredData.totalPaid }, { label: 'Provisionado', value: filteredData.totalExpense }]} accentColor="text-rose-500" headerAction={<button onClick={() => { setIsExpInstallment(false); setShowExpForm(true); }} className="w-8 h-8 bg-rose-500 text-white rounded-xl shadow-lg shadow-rose-100 hover:rotate-90 transition-all font-black text-xl flex items-center justify-center">+</button>} />
@@ -172,7 +183,7 @@ const App: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <div className="lg:col-span-2">
-              <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+              <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 h-full">
                 <div className="flex items-center justify-between mb-10">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Saúde do Orçamento</h3>
                 </div>
@@ -232,7 +243,7 @@ const App: React.FC = () => {
                     </div>
                     <button 
                         onClick={generateAIInsight}
-                        disabled={isAnalyzing}
+                        disabled={isAnalyzing || !currentUser}
                         className="w-full bg-white text-black py-5 rounded-[1.8rem] font-black uppercase text-[10px] tracking-[0.4em] shadow-2xl hover:bg-indigo-50 transition-all active:scale-95 disabled:opacity-20 mt-12"
                     >
                         {isAnalyzing ? 'Processando Dados...' : 'Gerar Insight'}
@@ -279,12 +290,15 @@ const App: React.FC = () => {
           <form onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              setBudget(String(fd.get('category')), Number(fd.get('limit')), selectedMonth, selectedYear);
+              const catId = String(fd.get('category'));
+              if (!catId || catId === "") return;
+              setBudget(catId, Number(fd.get('limit')), selectedMonth, selectedYear);
               setShowBudgetForm(false);
           }} className="space-y-8">
               <div>
                   <label className="block text-[9px] font-black text-slate-400 uppercase mb-4 tracking-[0.2em]">Selecione a Categoria</label>
-                  <select name="category" className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase cursor-pointer">
+                  <select name="category" required className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase cursor-pointer">
+                      <option value="">Selecione...</option>
                       {categories.filter(c => c.type === TransactionType.EXPENSE).map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
@@ -318,6 +332,11 @@ const App: React.FC = () => {
                           {currentUser?.id === u.id && <span className="text-indigo-600 text-xl font-black">✓</span>}
                       </button>
                   ))}
+                  {users.length === 0 && (
+                      <div className="text-center py-4">
+                          <p className="text-[10px] font-black text-slate-400 uppercase">Nenhum membro cadastrado</p>
+                      </div>
+                  )}
               </div>
               <div className="pt-8 border-t border-slate-100">
                   <form onSubmit={(e) => {
@@ -328,7 +347,7 @@ const App: React.FC = () => {
                   }} className="space-y-4">
                       <input name="nome" placeholder="NOME DO MEMBRO" required className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase tracking-widest" />
                       <input name="email" type="email" placeholder="E-MAIL" required className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] tracking-widest" />
-                      <button type="submit" className="w-full bg-black text-white p-6 rounded-2xl font-black uppercase text-[10px] tracking-[0.4em] hover:bg-slate-800 transition-all">Adicionar</button>
+                      <button type="submit" className="w-full bg-black text-white p-6 rounded-2xl font-black uppercase text-[10px] tracking-[0.4em] hover:bg-slate-800 transition-all">Adicionar Membro</button>
                   </form>
               </div>
           </div>
@@ -339,11 +358,13 @@ const App: React.FC = () => {
         <form onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
+          const catId = String(fd.get('category'));
+          if (!catId || catId === "") return;
           addRevenue({
             description: String(fd.get('desc')).toUpperCase(),
             value: Number(fd.get('value')),
             date: String(fd.get('date')),
-            categoryId: String(fd.get('category')),
+            categoryId: catId,
             status: Status.PENDING,
             isRecurrent: isRevRecurrent,
             frequency: isRevRecurrent ? Frequency.MONTHLY : undefined
@@ -353,7 +374,8 @@ const App: React.FC = () => {
           <input name="desc" required className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase" placeholder="DESCRIÇÃO (EX: SALÁRIO)" />
           <input name="value" type="number" step="0.01" required className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase" placeholder="VALOR R$" />
           <input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase" />
-          <select name="category" className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase">
+          <select name="category" required className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase">
+                <option value="">Selecione a Categoria...</option>
                 {categories.filter(c => c.type === TransactionType.REVENUE).map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -372,6 +394,8 @@ const App: React.FC = () => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
           const categoryId = String(fd.get('category'));
+          if (!categoryId || categoryId === "") return;
+
           if (isExpInstallment) {
             addDebt({
               description: String(fd.get('desc')).toUpperCase(),
@@ -413,7 +437,8 @@ const App: React.FC = () => {
               {isExpInstallment && <input name="installmentsCount" type="number" required placeholder="QTD DE PARCELAS" className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase" />}
               <input name={isExpInstallment ? "startDate" : "dueDate"} type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase" />
           </div>
-          <select name="category" className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase">
+          <select name="category" required className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none font-black text-[10px] uppercase">
+                <option value="">Selecione a Categoria...</option>
                 {categories.filter(c => c.type === TransactionType.EXPENSE).map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
