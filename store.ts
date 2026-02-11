@@ -42,7 +42,7 @@ export const useFinanceStore = () => {
     startDate: d.start_date,
     frequency: d.frequency,
     installmentsCount: d.installments_count,
-    installment_value: Number(d.installment_value),
+    installmentValue: Number(d.installment_value),
     status: d.status,
     categoryId: d.category_id
   });

@@ -98,7 +98,11 @@ const App: React.FC = () => {
   const [expRecurrenceCount, setRevRecurrenceCountExp] = useState(12);
   const [isExpInstallment, setIsExpInstallment] = useState(false);
 
-  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const currentYear = new Date().getFullYear();
+  const yearOptions = useMemo(() => {
+    return Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+  }, [currentYear]);
 
   const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => a.name.localeCompare(b.name));
@@ -163,23 +167,28 @@ const App: React.FC = () => {
 
   const MinimalHeader = (
     <div className="flex-1 flex items-center justify-between px-6 md:px-10 h-16">
-      <div className="flex items-center gap-3">
-        <button 
-          onClick={() => { if(selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y-1); } else setSelectedMonth(m => m-1); }} 
-          className="w-8 h-8 flex items-center justify-center text-[#64748B] hover:text-[#0F172A] transition-colors text-xl"
-        >‹</button>
-        <div className="flex flex-col items-center">
-            <span className="text-[14px] font-semibold text-[#0F172A] tracking-wide flex items-center gap-2">
-              {months[selectedMonth]} {selectedYear}
-              {(isSyncing || isDeleting) && <div className="w-2 h-2 bg-[#2563EB] rounded-full animate-ping"></div>}
-            </span>
-        </div>
-        <button 
-          onClick={() => { if(selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y+1); } else setSelectedMonth(m => m+1); }} 
-          className="w-8 h-8 flex items-center justify-center text-[#64748B] hover:text-[#0F172A] transition-colors text-xl"
-        >›</button>
+      <div className="flex items-center gap-2">
+        <select 
+          value={selectedMonth} 
+          onChange={(e) => setSelectedMonth(Number(e.target.value))}
+          className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-xs font-bold text-[#0F172A] outline-none focus:border-[#2563EB] transition-all uppercase cursor-pointer hover:bg-white"
+        >
+          {months.map((m, idx) => (
+            <option key={m} value={idx}>{m}</option>
+          ))}
+        </select>
+        <select 
+          value={selectedYear} 
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
+          className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-xs font-bold text-[#0F172A] outline-none focus:border-[#2563EB] transition-all uppercase cursor-pointer hover:bg-white"
+        >
+          {yearOptions.map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        {(isSyncing || isDeleting) && <div className="w-2 h-2 bg-[#2563EB] rounded-full animate-ping ml-1 shrink-0"></div>}
       </div>
-      <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 group">
+      <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 group ml-4">
           <span className="hidden sm:inline text-xs font-bold text-[#64748B] group-hover:text-[#0F172A] transition-colors uppercase">
             {currentUser?.nome || 'ENTRAR'}
           </span>

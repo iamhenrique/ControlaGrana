@@ -1,3 +1,4 @@
+
 -- =====================================================
 -- CONTROLAGRANA | SCHEMA DEFINITIVO
 -- =====================================================
@@ -87,22 +88,21 @@ CREATE TABLE IF NOT EXISTS budgets (
 );
 
 -- 8. TABELA DE TRANSAÇÕES INATIVAS (HISTÓRICO COMPLETO)
--- Contém todas as colunas de receitas e despesas para preservação total de dados
 CREATE TABLE IF NOT EXISTS transacao_inativas (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    original_id uuid,                      -- ID que o registro tinha na tabela original
+    original_id uuid,
     user_id uuid REFERENCES usuarios(id) ON DELETE CASCADE,
     tipo_original text NOT NULL CHECK (tipo_original IN ('RECEITA', 'DESPESA', 'PARCELA')),
     description text NOT NULL,
     value numeric NOT NULL,
-    data_referencia date NOT NULL,         -- Mapeia 'date' de receitas ou 'due_date' de despesas
+    data_referencia date NOT NULL,
     category_id uuid REFERENCES categories(id) ON DELETE SET NULL,
-    status_no_momento text,                -- Status (PAID/PENDING) antes da inativação
+    status_no_momento text,
     is_recurrent boolean DEFAULT false,
     frequency text,
-    payment_method text,                   -- Campo vindo da tabela de despesas
-    motivo_inativacao text,                -- Ex: 'Exclusão via App', 'Estorno Administrativo'
-    criado_em_original timestamp with time zone, -- Data original de criação do registro
+    payment_method text,
+    motivo_inativacao text,
+    criado_em_original timestamp with time zone,
     inativado_em timestamp with time zone DEFAULT now()
 );
 
@@ -116,7 +116,7 @@ ALTER TABLE installments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transacao_inativas ENABLE ROW LEVEL SECURITY;
 
--- POLÍTICAS DE ACESSO PÚBLICO (CONFIGURAÇÃO PARA MVP)
+-- POLÍTICAS DE ACESSO PÚBLICO
 CREATE POLICY "Public Access Usuarios" ON usuarios FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Categories" ON categories FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Revenues" ON revenues FOR ALL USING (true) WITH CHECK (true);
@@ -126,7 +126,7 @@ CREATE POLICY "Public Access Installments" ON installments FOR ALL USING (true) 
 CREATE POLICY "Public Access Budgets" ON budgets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access TransacoesInativas" ON transacao_inativas FOR ALL USING (true) WITH CHECK (true);
 
--- DADOS INICIAIS DE CATEGORIAS
+-- DADOS INICIAIS
 INSERT INTO categories (name, type) VALUES 
 ('SALÁRIO', 'REVENUE'),
 ('BÔNUS', 'REVENUE'),
