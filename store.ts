@@ -238,6 +238,7 @@ export const useFinanceStore = () => {
           value: exp.value,
           due_date: calculateNextDate(baseDate, i, exp.frequency || Frequency.MONTHLY),
           category_id: exp.categoryId,
+          // Fixed: Changed exp.payment_method to exp.paymentMethod to match the interface definition
           payment_method: exp.paymentMethod || 'PIX',
           status: exp.status,
           is_recurrent: exp.isRecurrent,
@@ -336,6 +337,7 @@ export const useFinanceStore = () => {
 
       if (debtData) {
           const newDebt = debtData[0];
+          // Fix: Use i.installmentNumber instead of i.installment_number since i is of type Installment
           const insts = generateInstallments(newDebt.id, debt.totalValue, debt.installmentsCount, debt.startDate, debt.frequency)
               .map(i => ({ id: i.id, debt_id: i.debtId, installment_number: i.installmentNumber, value: i.value, due_date: i.dueDate, status: i.status }));
           const { data: instData, error: instError } = await supabase.from('installments').insert(insts).select();
@@ -386,6 +388,7 @@ export const useFinanceStore = () => {
   };
 
   const toggleExpenseStatus = async (id: string) => {
+    setIsSyncing(true);
     try {
       const exp = expenses.find(e => e.id === id);
       if (!exp) return;
@@ -395,10 +398,13 @@ export const useFinanceStore = () => {
       setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA DESPESA:", e);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
   const toggleRevenueStatus = async (id: string) => {
+    setIsSyncing(true);
     try {
       const rev = revenues.find(r => r.id === id);
       if (!rev) return;
@@ -408,6 +414,24 @@ export const useFinanceStore = () => {
       setRevenues(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA RECEITA:", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const toggleInstallmentStatus = async (id: string) => {
+    setIsSyncing(true);
+    try {
+      const inst = installments.find(i => i.id === id);
+      if (!inst) return;
+      const newStatus = inst.status === Status.PAID ? Status.PENDING : Status.PAID;
+      const { error } = await supabase.from('installments').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
+      setInstallments(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i));
+    } catch (e) {
+      console.error("ERRO AO ALTERNAR STATUS DA PARCELA:", e);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -417,7 +441,7 @@ export const useFinanceStore = () => {
     isLoaded, isSyncing,
     addRevenue, updateRevenue, deleteRevenue,
     addExpense, updateExpense, deleteExpense,
-    addDebt, deleteDebt, toggleExpenseStatus, toggleRevenueStatus,
+    addDebt, deleteDebt, toggleExpenseStatus, toggleRevenueStatus, toggleInstallmentStatus,
     addCategory, deleteCategory, refresh: fetchData
   };
 };
