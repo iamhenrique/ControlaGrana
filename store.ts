@@ -392,13 +392,13 @@ export const useFinanceStore = () => {
   const toggleExpenseStatus = async (id: string) => {
     setIsSyncing(true);
     try {
-      const exp = expenses.find(e => e.id === id);
+      const exp = expenses.find(e => String(e.id) === String(id));
       if (!exp) return;
       const newStatus = exp.status === Status.PAID ? Status.PENDING : Status.PAID;
       const paidAt = newStatus === Status.PAID ? getLocalDateString() : null;
       const { error } = await supabase.from('expenses').update({ status: newStatus, paid_at: paidAt }).eq('id', id);
       if (error) throw error;
-      setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: newStatus, paidAt: paidAt || undefined } : e));
+      setExpenses(prev => prev.map(e => String(e.id) === String(id) ? { ...e, status: newStatus, paidAt: paidAt || undefined } : e));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA DESPESA:", e);
     } finally {
@@ -409,13 +409,13 @@ export const useFinanceStore = () => {
   const toggleRevenueStatus = async (id: string) => {
     setIsSyncing(true);
     try {
-      const rev = revenues.find(r => r.id === id);
+      const rev = revenues.find(r => String(r.id) === String(id));
       if (!rev) return;
       const newStatus = rev.status === Status.PAID ? Status.PENDING : Status.PAID;
       const paidAt = newStatus === Status.PAID ? getLocalDateString() : null;
       const { error } = await supabase.from('revenues').update({ status: newStatus, paid_at: paidAt }).eq('id', id);
       if (error) throw error;
-      setRevenues(prev => prev.map(r => r.id === id ? { ...r, status: newStatus, paidAt: paidAt || undefined } : r));
+      setRevenues(prev => prev.map(r => String(r.id) === String(id) ? { ...r, status: newStatus, paidAt: paidAt || undefined } : r));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA RECEITA:", e);
     } finally {
@@ -426,13 +426,13 @@ export const useFinanceStore = () => {
   const toggleInstallmentStatus = async (id: string) => {
     setIsSyncing(true);
     try {
-      const inst = installments.find(i => i.id === id);
+      const inst = installments.find(i => String(i.id) === String(id));
       if (!inst) return;
       const newStatus = inst.status === Status.PAID ? Status.PENDING : Status.PAID;
       const paidAt = newStatus === Status.PAID ? getLocalDateString() : null;
       const { error } = await supabase.from('installments').update({ status: newStatus, paid_at: paidAt }).eq('id', id);
       if (error) throw error;
-      setInstallments(prev => prev.map(i => i.id === id ? { ...i, status: newStatus, paidAt: paidAt || undefined } : i));
+      setInstallments(prev => prev.map(i => String(i.id) === String(id) ? { ...i, status: newStatus, paidAt: paidAt || undefined } : i));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA PARCELA:", e);
     } finally {

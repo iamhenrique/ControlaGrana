@@ -258,9 +258,10 @@ const AppContent: React.FC = () => {
   };
 
   const handleToggle = (item: any) => {
-    if (item.transactionType === 'revenue') toggleRevenueStatus(item.id);
-    else if (item.transactionType === 'expense') toggleExpenseStatus(item.id);
-    else if (item.transactionType === 'installment') toggleInstallmentStatus(item.id);
+    const type = item.transactionType || item.type;
+    if (type === 'revenue') toggleRevenueStatus(item.id);
+    else if (type === 'expense') toggleExpenseStatus(item.id);
+    else if (type === 'installment') toggleInstallmentStatus(item.id);
   };
 
   const handleFinalDelete = async () => {
@@ -666,8 +667,9 @@ const ExtratoView = ({ revenues, expenses, installments, openEdit, handleToggle,
                     <div className="flex items-center gap-5 ml-2 shrink-0">
                        <span className={`text-sm font-bold ${isRevenue ? 'text-[#16A34A]' : 'text-[#0F172A]'}`}>{formatCurrency(item.value)}</span>
                        <button 
+                           type="button"
                            onClick={(e) => { e.stopPropagation(); handleToggle(item); }}
-                           className={`relative w-10 h-6 rounded-full transition-all duration-300 flex items-center px-1 shadow-inner ${isPaid ? (isRevenue ? 'bg-[#16A34A]' : isInstallment ? 'bg-[#2563EB]' : 'bg-[#DC2626]') : 'bg-[#E2E8F0]'}`}
+                           className={`relative w-10 h-6 rounded-full transition-all duration-300 flex items-center px-1 shadow-inner outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2563EB] ${isPaid ? (isRevenue ? 'bg-[#16A34A]' : isInstallment ? 'bg-[#2563EB]' : 'bg-[#DC2626]') : 'bg-[#E2E8F0]'}`}
                        >
                            <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-300 ${isPaid ? 'translate-x-4' : 'translate-x-0'}`}></div>
                        </button>
