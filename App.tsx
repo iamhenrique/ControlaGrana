@@ -320,9 +320,19 @@ const App: React.FC = () => {
           
           <ResumoCard title="SALDO TOTAL" isHero totalValue={filteredData.finalBalance} subValues={[{ label: 'RECEITAS', value: filteredData.totalRevenue }, { label: 'DESPESAS', value: filteredData.totalExpense }]} />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <ResumoCard title="RECEBIDOS" totalValue={filteredData.receivedRevenue} accentColor="text-[#16A34A]" />
-            <ResumoCard title="PAGOS" totalValue={filteredData.totalPaid} accentColor="text-[#DC2626]" />
+          <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-sm grid grid-cols-2 divide-x divide-[#E2E8F0]">
+            <div className="flex flex-col items-center text-center">
+              <span className="text-[12px] font-bold text-[#64748B] tracking-wide uppercase mb-1">RECEBIDOS</span>
+              <div className="text-[20px] font-bold tracking-tight text-[#16A34A]">
+                {formatCurrency(filteredData.receivedRevenue)}
+              </div>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <span className="text-[12px] font-bold text-[#64748B] tracking-wide uppercase mb-1">PAGOS</span>
+              <div className="text-[20px] font-bold tracking-tight text-[#DC2626]">
+                {formatCurrency(filteredData.totalPaid)}
+              </div>
+            </div>
           </div>
 
           <div className="pt-4">

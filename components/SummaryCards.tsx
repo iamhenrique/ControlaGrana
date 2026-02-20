@@ -30,19 +30,23 @@ const ResumoCard: React.FC<ResumoCardProps> = ({ title, totalValue, subValues, a
           <span className="text-sm font-bold text-[#64748B] uppercase tracking-wide">{title.toUpperCase()}</span>
           {headerAction}
         </div>
-        <div className={`text-[28px] md:text-[32px] font-bold tracking-tight mb-6 transition-all duration-500 transform ${isUpdating ? 'scale-[1.03] text-[#2563EB]' : 'scale-100 ' + mainTextColor}`}>
-          {formatCurrency(totalValue)}
-        </div>
-        {subValues && subValues.length > 0 && (
-          <div className="flex gap-8 pt-4 border-t border-[#E2E8F0]">
-            {subValues.map((sub, idx) => (
-              <div key={idx} className="flex flex-col">
-                <span className="text-xs font-bold text-[#64748B] mb-1 uppercase">{sub.label.toUpperCase()}</span>
-                <span className={`text-base font-bold ${sub.label.toUpperCase() === 'RECEITAS' ? 'text-[#16A34A]' : sub.label.toUpperCase() === 'DESPESAS' ? 'text-[#DC2626]' : 'text-[#0F172A]'}`}>{formatCurrency(sub.value)}</span>
-              </div>
-            ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:divide-x divide-[#E2E8F0]">
+          <div className="flex flex-col justify-center">
+            <div className={`text-[28px] md:text-[32px] font-bold tracking-tight transition-all duration-500 transform ${isUpdating ? 'scale-[1.03] text-[#2563EB]' : 'scale-100 ' + mainTextColor}`}>
+              {formatCurrency(totalValue)}
+            </div>
           </div>
-        )}
+          {subValues && subValues.length > 0 && (
+            <div className="flex flex-col gap-3 sm:pl-8 justify-center">
+              {subValues.map((sub, idx) => (
+                <div key={idx} className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">{sub.label.toUpperCase()}</span>
+                  <span className={`text-sm font-bold ${sub.label.toUpperCase() === 'RECEITAS' ? 'text-[#16A34A]' : sub.label.toUpperCase() === 'DESPESAS' ? 'text-[#DC2626]' : 'text-[#0F172A]'}`}>{formatCurrency(sub.value)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
