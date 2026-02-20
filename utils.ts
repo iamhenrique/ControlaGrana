@@ -1,6 +1,13 @@
 
 import { Frequency, Installment, Status } from './types';
 
+export const getLocalDateString = (date: Date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -35,7 +42,7 @@ export const generateInstallments = (
 ): Installment[] => {
   const installments: Installment[] = [];
   const installmentValue = totalValue / count;
-  const initialDate = new Date(startDate);
+  const initialDate = new Date(startDate + 'T12:00:00');
 
   for (let i = 1; i <= count; i++) {
     let dueDate = new Date(initialDate);
@@ -52,7 +59,7 @@ export const generateInstallments = (
       debtId,
       installmentNumber: i,
       value: installmentValue,
-      dueDate: dueDate.toISOString().split('T')[0],
+      dueDate: getLocalDateString(dueDate),
       status: Status.PENDING,
     });
   }
@@ -61,6 +68,6 @@ export const generateInstallments = (
 };
 
 export const getMonthYear = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return `${date.getMonth() + 1}-${date.getFullYear()}`;
+  const [year, month] = dateStr.split('-');
+  return `${parseInt(month, 10)}-${year}`;
 };

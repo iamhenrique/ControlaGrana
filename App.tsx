@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Layout from './components/Layout';
 import { useFinanceStore } from './store';
 import ResumoCard from './components/SummaryCards';
-import { formatCurrency, getMonthYear } from './utils';
+import { formatCurrency, getMonthYear, getLocalDateString } from './utils';
 import { Status, TransactionType, Frequency, Revenue, SimpleExpense } from './types';
 
 // Hook para Lazy Loading
@@ -159,17 +159,17 @@ const App: React.FC = () => {
     // 1. Receitas Pendentes (Ordem Crescente)
     const pendingRevenues = all
       .filter(t => t.status === Status.PENDING && t.transactionType === 'revenue')
-      .sort((a, b) => new Date(a.dateKey).getTime() - new Date(b.dateKey).getTime());
+      .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
     
     // 2. Despesas/Parcelas Pendentes (Ordem Crescente)
     const pendingExpenses = all
       .filter(t => t.status === Status.PENDING && (t.transactionType === 'expense' || t.transactionType === 'installment'))
-      .sort((a, b) => new Date(a.dateKey).getTime() - new Date(b.dateKey).getTime());
+      .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 
     // 3. Tudo Pago (Ordem Crescente)
     const paid = all
       .filter(t => t.status === Status.PAID)
-      .sort((a, b) => new Date(a.dateKey).getTime() - new Date(b.dateKey).getTime());
+      .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 
     return { 
         pending: [...pendingRevenues, ...pendingExpenses], 
@@ -336,7 +336,7 @@ const App: React.FC = () => {
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-sm font-bold text-[#0F172A] uppercase truncate max-w-[150px] sm:max-w-none">{item.description}</span>
-                                <span className="text-[10px] font-medium text-[#64748B] uppercase">{new Date(item.sortDate).toLocaleDateString('pt-BR')}</span>
+                                <span className="text-[10px] font-medium text-[#64748B] uppercase">{new Date(item.sortDate + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
                             </div>
                         </div>
                         <span className={`text-sm font-bold ${item.type === 'revenue' ? 'text-[#16A34A]' : 'text-[#0F172A]'}`}>
@@ -408,8 +408,8 @@ const App: React.FC = () => {
                       >
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                           <div className="flex flex-col items-center justify-center min-w-[42px] h-[42px] bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                             <span className="text-[10px] font-bold text-[#64748B] uppercase leading-none mb-0.5">{new Date(item.dateKey).toLocaleDateString('pt-BR', {month: 'short'}).replace('.', '')}</span>
-                             <span className="text-sm font-bold text-[#0F172A] leading-none">{new Date(item.dateKey).getDate()}</span>
+                             <span className="text-[10px] font-bold text-[#64748B] uppercase leading-none mb-0.5">{new Date(item.dateKey + 'T12:00:00').toLocaleDateString('pt-BR', {month: 'short'}).replace('.', '')}</span>
+                             <span className="text-sm font-bold text-[#0F172A] leading-none">{new Date(item.dateKey + 'T12:00:00').getDate()}</span>
                           </div>
                           <div className="flex flex-col truncate pr-2">
                              <span className="text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors uppercase truncate">{item.description}</span>
@@ -465,7 +465,7 @@ const App: React.FC = () => {
           <input name="desc" required className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm uppercase" placeholder="DESCRIÇÃO" />
           <div className="grid grid-cols-2 gap-4">
             <input name="value" type="number" step="0.01" required className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" placeholder="VALOR" />
-            <input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" />
+            <input name="date" type="date" required defaultValue={getLocalDateString()} className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" />
           </div>
           <select name="category" required className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm uppercase">
               <option value="">CATEGORIA...</option>
@@ -507,9 +507,9 @@ const App: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <input name={isExpInstallment ? "totalValue" : "value"} type="number" step="0.01" required className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" placeholder={isExpInstallment ? "TOTAL" : "VALOR"} />
-            {isExpInstallment ? <input name="installmentsCount" type="number" required className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" placeholder="PARCELAS" /> : <input name="dueDate" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" />}
+            {isExpInstallment ? <input name="installmentsCount" type="number" required className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" placeholder="PARCELAS" /> : <input name="dueDate" type="date" required defaultValue={getLocalDateString()} className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" />}
           </div>
-          {isExpInstallment && <input name="startDate" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" />}
+          {isExpInstallment && <input name="startDate" type="date" required defaultValue={getLocalDateString()} className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm" />}
           <select name="category" required className="w-full bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-sm uppercase">
               <option value="">CATEGORIA...</option>
               {sortedCategories.filter(c => c.type === TransactionType.EXPENSE).map(c => <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>)}

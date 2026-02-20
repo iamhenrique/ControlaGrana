@@ -5,7 +5,7 @@ import {
   Revenue, SimpleExpense, InstallmentDebt, Installment, 
   Category, TransactionType, Status, DebtStatus, Frequency, User, Budget
 } from './types';
-import { generateInstallments } from './utils';
+import { generateInstallments, getLocalDateString } from './utils';
 
 export const useFinanceStore = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -145,13 +145,12 @@ export const useFinanceStore = () => {
 
   const calculateNextDate = (baseDate: Date, index: number, freq: Frequency) => {
     const d = new Date(baseDate);
-    d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
     if (freq === Frequency.DAILY) d.setDate(d.getDate() + index);
     if (freq === Frequency.WEEKLY) d.setDate(d.getDate() + index * 7);
     if (freq === Frequency.BIWEEKLY) d.setDate(d.getDate() + index * 15);
     if (freq === Frequency.MONTHLY) d.setMonth(d.getMonth() + index);
     if (freq === Frequency.YEARLY) d.setFullYear(d.getFullYear() + index);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   };
 
   const addRevenue = async (rev: Omit<Revenue, 'id'>, repetitions: number = 1): Promise<boolean> => {
@@ -159,7 +158,7 @@ export const useFinanceStore = () => {
     setIsSyncing(true);
     try {
       const newRevs = [];
-      const baseDate = new Date(rev.date);
+      const baseDate = new Date(rev.date + 'T12:00:00');
       for (let i = 0; i < repetitions; i++) {
         newRevs.push({
           user_id: currentUser.id,
@@ -230,7 +229,7 @@ export const useFinanceStore = () => {
     setIsSyncing(true);
     try {
       const newExps = [];
-      const baseDate = new Date(exp.dueDate);
+      const baseDate = new Date(exp.dueDate + 'T12:00:00');
       for (let i = 0; i < repetitions; i++) {
         newExps.push({
           user_id: currentUser.id,
