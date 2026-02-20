@@ -1,24 +1,26 @@
 
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
   children: React.ReactNode;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
   headerContent?: React.ReactNode;
   headerClassName?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, headerContent, headerClassName }) => {
+const Layout: React.FC<LayoutProps> = ({ children, headerContent, headerClassName }) => {
+  const location = useLocation();
+  const activeTab = location.pathname === '/' ? 'dashboard' : location.pathname.substring(1);
+
   const tabs = [
-    { id: 'dashboard', label: 'HOME', icon: (active: boolean) => (
+    { id: 'dashboard', label: 'HOME', path: '/', icon: (active: boolean) => (
       <svg className={`w-5 h-5 ${active ? 'text-[#2563EB]' : 'text-[#64748B]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
       </svg>
     )},
-    { id: 'transactions', label: 'FLUXO', icon: (active: boolean) => (
+    { id: 'extrato', label: 'EXTRATO', path: '/extrato', icon: (active: boolean) => (
       <svg className={`w-5 h-5 ${active ? 'text-[#2563EB]' : 'text-[#64748B]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     )},
   ];
@@ -36,9 +38,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
           {tabs.map(tab => {
             const active = activeTab === tab.id;
             return (
-              <button
+              <Link
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                to={tab.path}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-bold ${
                   active 
                   ? 'bg-[#2563EB]/5 text-[#2563EB]' 
@@ -47,7 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
               >
                 {tab.icon(active)}
                 {tab.label}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -84,9 +86,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
         {tabs.map(tab => {
           const active = activeTab === tab.id;
           return (
-            <button
+            <Link
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              to={tab.path}
               className={`flex flex-col items-center gap-0.5 transition-all duration-300 px-4 py-2 rounded-xl ${
                 active ? 'text-[#2563EB]' : 'text-[#64748B]'
               }`}
@@ -95,7 +97,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
                 {tab.icon(active)}
               </div>
               <span className="text-[10px] font-bold uppercase tracking-tight">{tab.label}</span>
-            </button>
+            </Link>
           );
         })}
       </nav>

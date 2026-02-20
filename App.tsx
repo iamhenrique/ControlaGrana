@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useFinanceStore } from './store';
 import ResumoCard from './components/SummaryCards';
@@ -58,7 +59,16 @@ const Toggle = ({ enabled, onChange, activeColorClass }: { enabled: boolean, onC
 };
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  return (
+    <HashRouter>
+      <AppContent />
+    </HashRouter>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const location = useLocation();
+  const activeTab = location.pathname === '/' ? 'dashboard' : location.pathname.substring(1);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showFabMenu, setShowFabMenu] = useState(false);
@@ -194,8 +204,12 @@ const App: React.FC = () => {
   };
 
   const MinimalHeader = (
-    <div className="flex-1 flex items-center justify-between px-6 md:px-10 h-16">
-      <div className="flex items-center gap-2">
+    <div className="flex-1 grid grid-cols-3 items-center px-6 md:px-10 h-16">
+      <div className="flex items-center">
+        {(isSyncing || isDeleting) && <div className="w-2 h-2 bg-[#2563EB] rounded-full animate-ping shrink-0"></div>}
+      </div>
+      
+      <div className="flex items-center justify-center gap-2">
         <select 
           value={selectedMonth} 
           onChange={(e) => setSelectedMonth(Number(e.target.value))}
@@ -214,16 +228,18 @@ const App: React.FC = () => {
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
-        {(isSyncing || isDeleting) && <div className="w-2 h-2 bg-[#2563EB] rounded-full animate-ping ml-1 shrink-0"></div>}
       </div>
-      <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 group ml-4">
-          <span className="hidden sm:inline text-xs font-bold text-[#64748B] group-hover:text-[#0F172A] transition-colors uppercase">
-            {currentUser?.nome || 'ENTRAR'}
-          </span>
-          <div className="w-8 h-8 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-xs font-bold text-[#64748B] group-hover:bg-[#2563EB]/10 group-hover:text-[#2563EB] transition-all">
-              {currentUser?.nome?.[0]?.toUpperCase() || '?'}
-          </div>
-      </button>
+
+      <div className="flex items-center justify-end">
+        <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 group">
+            <span className="hidden sm:inline text-xs font-bold text-[#64748B] group-hover:text-[#0F172A] transition-colors uppercase">
+              {currentUser?.nome || 'ENTRAR'}
+            </span>
+            <div className="w-8 h-8 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-xs font-bold text-[#64748B] group-hover:bg-[#2563EB]/10 group-hover:text-[#2563EB] transition-all">
+                {currentUser?.nome?.[0]?.toUpperCase() || '?'}
+            </div>
+        </button>
+      </div>
     </div>
   );
 
@@ -295,7 +311,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab} headerContent={MinimalHeader} headerClassName="bg-white border-b border-[#E2E8F0]">
+    <Layout headerContent={MinimalHeader} headerClassName="bg-white border-b border-[#E2E8F0]">
       
       {currentUser && (
         <div className="fixed bottom-24 md:bottom-12 right-6 md:right-12 z-[90]">
@@ -309,150 +325,69 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'dashboard' && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto">
-          {!currentUser && (
-            <div className="bg-white p-10 rounded-2xl border border-[#E2E8F0] text-center shadow-sm">
-               <p className="text-sm font-bold text-[#64748B] uppercase tracking-wide">SELECIONE UM PERFIL PARA VISUALIZAR SEUS DADOS.</p>
-               <button onClick={() => setShowSettingsModal(true)} className="mt-4 bg-[#2563EB] text-white px-6 py-2 rounded-xl font-bold text-xs uppercase">SELECIONAR PERFIL</button>
-            </div>
-          )}
-          
-          <ResumoCard title="SALDO TOTAL" isHero totalValue={filteredData.finalBalance} subValues={[{ label: 'RECEITAS', value: filteredData.totalRevenue }, { label: 'DESPESAS', value: filteredData.totalExpense }]} />
+      <Routes>
+        <Route path="/" element={
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto">
+            {!currentUser && (
+              <div className="bg-white p-10 rounded-2xl border border-[#E2E8F0] text-center shadow-sm">
+                 <p className="text-sm font-bold text-[#64748B] uppercase tracking-wide">SELECIONE UM PERFIL PARA VISUALIZAR SEUS DADOS.</p>
+                 <button onClick={() => setShowSettingsModal(true)} className="mt-4 bg-[#2563EB] text-white px-6 py-2 rounded-xl font-bold text-xs uppercase">SELECIONAR PERFIL</button>
+              </div>
+            )}
+            
+            <ResumoCard title="SALDO TOTAL" isHero totalValue={filteredData.finalBalance} subValues={[{ label: 'RECEITAS', value: filteredData.totalRevenue }, { label: 'DESPESAS', value: filteredData.totalExpense }]} />
 
-          <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-sm grid grid-cols-2 divide-x divide-[#E2E8F0]">
-            <div className="flex flex-col items-center text-center">
-              <span className="text-[12px] font-bold text-[#64748B] tracking-wide uppercase mb-1">RECEBIDOS</span>
-              <div className="text-[20px] font-bold tracking-tight text-[#16A34A]">
-                {formatCurrency(filteredData.receivedRevenue)}
+            <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-sm grid grid-cols-2 divide-x divide-[#E2E8F0]">
+              <div className="flex flex-col items-center text-center">
+                <span className="text-[12px] font-bold text-[#64748B] tracking-wide uppercase mb-1">RECEBIDOS</span>
+                <div className="text-[20px] font-bold tracking-tight text-[#16A34A]">
+                  {formatCurrency(filteredData.receivedRevenue)}
+                </div>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <span className="text-[12px] font-bold text-[#64748B] tracking-wide uppercase mb-1">PAGOS</span>
+                <div className="text-[20px] font-bold tracking-tight text-[#DC2626]">
+                  {formatCurrency(filteredData.totalPaid)}
+                </div>
               </div>
             </div>
-            <div className="flex flex-col items-center text-center">
-              <span className="text-[12px] font-bold text-[#64748B] tracking-wide uppercase mb-1">PAGOS</span>
-              <div className="text-[20px] font-bold tracking-tight text-[#DC2626]">
-                {formatCurrency(filteredData.totalPaid)}
-              </div>
-            </div>
-          </div>
 
-          <div className="pt-4">
-             <h3 className="text-xs font-bold text-[#0F172A] uppercase tracking-widest mb-4 px-1">LANÇAMENTOS RECENTES</h3>
-             <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-sm divide-y divide-[#E2E8F0]">
-                {filteredData.recent.map((item: any, idx) => (
-                    <div key={idx} onClick={() => openEdit({...item, transactionType: item.type})} className="flex items-center justify-between p-5 hover:bg-[#F8FAFC] transition-colors cursor-pointer group">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${item.type === 'revenue' ? 'bg-[#16A34A]/10 text-[#16A34A]' : 'bg-[#DC2626]/10 text-[#DC2626]'}`}>
-                                {item.type === 'revenue' ? '↑' : '↓'}
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-sm font-bold text-[#0F172A] uppercase truncate max-w-[150px] sm:max-w-none">{item.description}</span>
-                                <span className="text-[10px] font-medium text-[#64748B] uppercase">{new Date(item.sortDate + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                            </div>
-                        </div>
-                        <span className={`text-sm font-bold ${item.type === 'revenue' ? 'text-[#16A34A]' : 'text-[#0F172A]'}`}>
-                            {item.type === 'revenue' ? '+' : '-'}{formatCurrency(item.value)}
-                        </span>
-                    </div>
-                ))}
-                {filteredData.recent.length === 0 && <div className="p-10 text-center text-xs font-bold text-[#64748B] uppercase">NADA POR AQUI.</div>}
-             </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'transactions' && (
-        <div className="space-y-10 animate-in slide-in-from-right-4 duration-500 max-w-4xl mx-auto pb-10">
-          <div className="flex items-center justify-between px-1">
-             <h3 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">FLUXO DE CAIXA</h3>
-             <span className="text-[10px] font-bold text-[#64748B] bg-[#F1F5F9] px-3 py-1 rounded-full uppercase">{unifiedFlow.total} ITENS</span>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-sm">
-             <div className="divide-y divide-[#E2E8F0]">
-                {/* CABEÇALHO PENDENTES */}
-                {unifiedFlow.pending.length > 0 && (
-                  <div className="bg-[#FFFBEB] px-5 py-2 border-b border-[#FEF3C7] flex justify-between items-center">
-                    <span className="text-[9px] font-bold text-[#D97706] uppercase tracking-[0.2em]">AGUARDANDO ({unifiedFlow.pending.length})</span>
-                  </div>
-                )}
-                
-                {flowLazy.visibleItems.map((item, index) => {
-                  const isPaid = item.status === Status.PAID;
-                  const isRevenue = item.transactionType === 'revenue';
-                  const isInstallment = item.transactionType === 'installment';
-                  
-                  // Cabeçalho subgrupo RECEITAS (dentro de Aguardando)
-                  const showPendingRevenueSubHeader = !isPaid && isRevenue && (index === 0 || flowLazy.visibleItems[index-1].status === Status.PAID || flowLazy.visibleItems[index-1].transactionType !== 'revenue');
-                  
-                  // Cabeçalho subgrupo DESPESAS (dentro de Aguardando)
-                  const showPendingExpenseSubHeader = !isPaid && !isRevenue && (index === 0 || flowLazy.visibleItems[index-1].status === Status.PAID || flowLazy.visibleItems[index-1].transactionType === 'revenue');
-
-                  // Cabeçalho bloco CONCLUÍDOS
-                  const showPaidHeader = isPaid && (index === 0 || flowLazy.visibleItems[index-1].status === Status.PENDING);
-
-                  return (
-                    <React.Fragment key={item.id}>
-                      {showPendingRevenueSubHeader && (
-                        <div className="bg-[#FFFBEB]/50 px-5 py-1.5 border-b border-[#FEF3C7]/50 flex items-center gap-2">
-                           <div className="w-1 h-1 rounded-full bg-[#16A34A]"></div>
-                           <span className="text-[8px] font-black text-[#16A34A] uppercase tracking-widest">RECEITAS ({unifiedFlow.pendingRevenuesCount})</span>
-                        </div>
-                      )}
-
-                      {showPendingExpenseSubHeader && (
-                        <div className="bg-[#FFFBEB]/50 px-5 py-1.5 border-b border-[#FEF3C7]/50 flex items-center gap-2">
-                           <div className="w-1 h-1 rounded-full bg-[#DC2626]"></div>
-                           <span className="text-[8px] font-black text-[#DC2626] uppercase tracking-widest">DESPESAS ({unifiedFlow.pendingExpensesCount})</span>
-                        </div>
-                      )}
-
-                      {showPaidHeader && (
-                        <div className="bg-[#F8FAFC] px-5 py-2 border-b border-[#E2E8F0]">
-                          <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-[0.2em]">CONCLUÍDOS ({unifiedFlow.paid.length})</span>
-                        </div>
-                      )}
-
-                      <div 
-                        onClick={() => openEdit(item)}
-                        className={`p-4 sm:p-5 flex items-center justify-between hover:bg-[#F8FAFC] transition-all cursor-pointer group border-l-4 border-transparent ${isPaid ? 'opacity-60 grayscale-[0.3]' : isRevenue ? 'hover:border-l-[#16A34A]' : 'hover:border-l-[#DC2626]'}`}
-                      >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <div className="flex flex-col items-center justify-center min-w-[42px] h-[42px] bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                             <span className="text-[10px] font-bold text-[#64748B] uppercase leading-none mb-0.5">{new Date(item.dateKey + 'T12:00:00').toLocaleDateString('pt-BR', {month: 'short'}).replace('.', '')}</span>
-                             <span className="text-sm font-bold text-[#0F172A] leading-none">{new Date(item.dateKey + 'T12:00:00').getDate()}</span>
+            <div className="pt-4">
+               <h3 className="text-xs font-bold text-[#0F172A] uppercase tracking-widest mb-4 px-1">LANÇAMENTOS RECENTES</h3>
+               <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-sm divide-y divide-[#E2E8F0]">
+                  {filteredData.recent.map((item: any, idx) => (
+                      <div key={idx} onClick={() => openEdit({...item, transactionType: item.type})} className="flex items-center justify-between p-5 hover:bg-[#F8FAFC] transition-colors cursor-pointer group">
+                          <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${item.type === 'revenue' ? 'bg-[#16A34A]/10 text-[#16A34A]' : 'bg-[#DC2626]/10 text-[#DC2626]'}`}>
+                                  {item.type === 'revenue' ? '↑' : '↓'}
+                              </div>
+                              <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-[#0F172A] uppercase truncate max-w-[150px] sm:max-w-none">{item.description}</span>
+                                  <span className="text-[10px] font-medium text-[#64748B] uppercase">{new Date(item.sortDate + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                              </div>
                           </div>
-                          <div className="flex flex-col truncate pr-2">
-                             <span className="text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors uppercase truncate">{item.description}</span>
-                             <div className="flex items-center gap-2">
-                               <span className={`text-[9px] font-bold uppercase tracking-widest ${isRevenue ? 'text-[#16A34A]' : isInstallment ? 'text-[#2563EB]' : 'text-[#64748B]'}`}>
-                                   {isInstallment ? `PARCELA ${item.installmentNumber}` : (sortedCategories.find(c => c.id === item.categoryId)?.name || 'LANÇAMENTO')}
-                               </span>
-                               {isPaid && <span className="text-[9px] font-bold text-[#64748B]">✓ OK</span>}
-                             </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-5 ml-2 shrink-0">
-                           <span className={`text-sm font-bold ${isRevenue ? 'text-[#16A34A]' : 'text-[#0F172A]'}`}>{formatCurrency(item.value)}</span>
-                           <button 
-                              onClick={(e) => { e.stopPropagation(); handleToggle(item); }}
-                              className={`relative w-10 h-6 rounded-full transition-all duration-300 flex items-center px-1 shadow-inner ${isPaid ? (isRevenue ? 'bg-[#16A34A]' : isInstallment ? 'bg-[#2563EB]' : 'bg-[#DC2626]') : 'bg-[#E2E8F0]'}`}
-                           >
-                              <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-300 ${isPaid ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                           </button>
-                        </div>
+                          <span className={`text-sm font-bold ${item.type === 'revenue' ? 'text-[#16A34A]' : 'text-[#0F172A]'}`}>
+                              {item.type === 'revenue' ? '+' : '-'}{formatCurrency(item.value)}
+                          </span>
                       </div>
-                    </React.Fragment>
-                  );
-                })}
-
-                {flowLazy.hasMore && (
-                  <button onClick={flowLazy.loadMore} className="w-full py-4 text-[10px] font-bold text-[#2563EB] uppercase tracking-widest hover:bg-[#F8FAFC]">VER MAIS LANÇAMENTOS ↓</button>
-                )}
-                {unifiedFlow.total === 0 && <div className="p-16 text-center text-xs font-bold text-[#64748B] uppercase tracking-widest">SEM MOVIMENTAÇÃO NO MÊS.</div>}
-             </div>
+                  ))}
+                  {filteredData.recent.length === 0 && <div className="p-10 text-center text-xs font-bold text-[#64748B] uppercase">NADA POR AQUI.</div>}
+               </div>
+            </div>
           </div>
-        </div>
-      )}
+        } />
+
+        <Route path="/extrato" element={
+          <ExtratoView 
+            revenues={filteredData.monthlyRevenues}
+            expenses={filteredData.monthlyExpenses}
+            installments={filteredData.monthlyInstallments}
+            openEdit={openEdit}
+            handleToggle={handleToggle}
+            sortedCategories={sortedCategories}
+          />
+        } />
+      </Routes>
 
       {/* MODAL NOVA RECEITA */}
       <Modal isOpen={showRevForm} onClose={() => setShowRevForm(false)} title="NOVA RECEITA">
@@ -618,6 +553,137 @@ const App: React.FC = () => {
           </div>
       </Modal>
     </Layout>
+  );
+};
+
+const ExtratoView = ({ revenues, expenses, installments, openEdit, handleToggle, sortedCategories }: { revenues: any[], expenses: any[], installments: any[], openEdit: (item: any) => void, handleToggle: (item: any) => void, sortedCategories: any[] }) => {
+  const [filterType, setFilterType] = useState<'all' | 'revenue' | 'expense'>('all');
+  
+  const totals = useMemo(() => {
+    const rev = revenues.reduce((acc, r) => acc + r.value, 0);
+    const exp = expenses.reduce((acc, e) => acc + e.value, 0) + installments.reduce((acc, i) => acc + i.value, 0);
+    return {
+      revenue: rev,
+      expense: exp,
+      balance: rev - exp
+    };
+  }, [revenues, expenses, installments]);
+
+  const allItems = useMemo(() => {
+    const all = [
+      ...revenues.map(r => ({ ...r, transactionType: 'revenue', dateKey: r.date })),
+      ...expenses.map(e => ({ ...e, transactionType: 'expense', dateKey: e.dueDate })),
+      ...installments.map(i => ({ ...i, transactionType: 'installment', dateKey: i.dueDate }))
+    ];
+
+    if (filterType === 'revenue') return all.filter(t => t.transactionType === 'revenue');
+    if (filterType === 'expense') return all.filter(t => t.transactionType === 'expense' || t.transactionType === 'installment');
+    return all;
+  }, [revenues, expenses, installments, filterType]);
+
+  const sortedItems = useMemo(() => {
+    const pending = allItems.filter(t => t.status === Status.PENDING).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    const paid = allItems.filter(t => t.status === Status.PAID).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    return { pending, paid };
+  }, [allItems]);
+
+  const flowLazy = useLazyList([...sortedItems.pending, ...sortedItems.paid]);
+
+  return (
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 max-w-4xl mx-auto pb-10">
+      <div className="flex flex-col items-center gap-4 px-1">
+         <div className="flex bg-white border border-[#E2E8F0] rounded-xl p-1 shadow-sm">
+            <button 
+              onClick={() => setFilterType('all')}
+              className={`px-6 py-2 rounded-lg transition-all flex flex-col items-center ${filterType === 'all' ? 'bg-[#2563EB] text-white shadow-md' : 'text-[#64748B] hover:text-[#0F172A]'}`}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider">SALDO</span>
+              <span className="text-[11px] font-bold">{formatCurrency(totals.balance)}</span>
+            </button>
+            <button 
+              onClick={() => setFilterType('revenue')}
+              className={`px-6 py-2 rounded-lg transition-all flex flex-col items-center ${filterType === 'revenue' ? 'bg-[#16A34A] text-white shadow-md' : 'text-[#64748B] hover:text-[#0F172A]'}`}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider">RECEITAS</span>
+              <span className="text-[11px] font-bold">{formatCurrency(totals.revenue)}</span>
+            </button>
+            <button 
+              onClick={() => setFilterType('expense')}
+              className={`px-6 py-2 rounded-lg transition-all flex flex-col items-center ${filterType === 'expense' ? 'bg-[#DC2626] text-white shadow-md' : 'text-[#64748B] hover:text-[#0F172A]'}`}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider">DESPESAS</span>
+              <span className="text-[11px] font-bold">{formatCurrency(totals.expense)}</span>
+            </button>
+         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-sm">
+         <div className="divide-y divide-[#E2E8F0]">
+            {sortedItems.pending.length > 0 && (
+              <div className="bg-[#FFFBEB] px-5 py-2 border-b border-[#FEF3C7] flex justify-between items-center">
+                <span className="text-[9px] font-bold text-[#D97706] uppercase tracking-[0.2em]">PENDENTE(S) - {sortedItems.pending.length}</span>
+              </div>
+            )}
+            
+            {flowLazy.visibleItems.map((item, index) => {
+              const isPaid = item.status === Status.PAID;
+              const isRevenue = item.transactionType === 'revenue';
+              const isInstallment = item.transactionType === 'installment';
+              
+              const showPaidHeader = isPaid && (index === 0 || flowLazy.visibleItems[index-1].status === Status.PENDING);
+
+              return (
+                <React.Fragment key={item.id}>
+                  {showPaidHeader && (
+                    <div className="bg-[#F8FAFC] px-5 py-2 border-b border-[#E2E8F0]">
+                       <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-[0.2em]">CONCLUÍDOS ({sortedItems.paid.length})</span>
+                    </div>
+                  )}
+
+                  <div 
+                    onClick={() => openEdit(item)}
+                    className={`p-4 sm:p-5 flex items-center justify-between hover:bg-[#F8FAFC] transition-all cursor-pointer group border-l-4 border-transparent ${isPaid ? 'opacity-60 grayscale-[0.3]' : isRevenue ? 'hover:border-l-[#16A34A]' : 'hover:border-l-[#DC2626]'}`}
+                  >
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex flex-col items-center justify-center min-w-[42px] h-[42px] bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                         <span className="text-[10px] font-bold text-[#64748B] uppercase leading-none mb-0.5">{new Date(item.dateKey + 'T12:00:00').toLocaleDateString('pt-BR', {month: 'short'}).replace('.', '')}</span>
+                         <span className="text-sm font-bold text-[#0F172A] leading-none">{new Date(item.dateKey + 'T12:00:00').getDate()}</span>
+                      </div>
+                      <div className="flex flex-col truncate pr-2">
+                         <span className="text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors uppercase truncate">{item.description}</span>
+                         <div className="flex items-center gap-2">
+                           {isPaid && (
+                             <span 
+                               className="text-[9px] font-bold text-[#64748B] cursor-help" 
+                               title={item.paidAt ? `Pago em: ${new Date(item.paidAt + 'T12:00:00').toLocaleDateString('pt-BR')}` : 'Pago'}
+                             >
+                               ✓ OK
+                             </span>
+                           )}
+                         </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-5 ml-2 shrink-0">
+                       <span className={`text-sm font-bold ${isRevenue ? 'text-[#16A34A]' : 'text-[#0F172A]'}`}>{formatCurrency(item.value)}</span>
+                       <button 
+                           onClick={(e) => { e.stopPropagation(); handleToggle(item); }}
+                           className={`relative w-10 h-6 rounded-full transition-all duration-300 flex items-center px-1 shadow-inner ${isPaid ? (isRevenue ? 'bg-[#16A34A]' : isInstallment ? 'bg-[#2563EB]' : 'bg-[#DC2626]') : 'bg-[#E2E8F0]'}`}
+                       >
+                           <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-300 ${isPaid ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                       </button>
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })}
+
+            {flowLazy.hasMore && (
+              <button onClick={flowLazy.loadMore} className="w-full py-4 text-[10px] font-bold text-[#2563EB] uppercase tracking-widest hover:bg-[#F8FAFC]">VER MAIS LANÇAMENTOS ↓</button>
+            )}
+            {allItems.length === 0 && <div className="p-16 text-center text-xs font-bold text-[#64748B] uppercase tracking-widest">SEM MOVIMENTAÇÃO NO MÊS.</div>}
+         </div>
+      </div>
+    </div>
   );
 };
 

@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS revenues (
     status text NOT NULL CHECK (status IN ('PENDING', 'PAID')),
     is_recurrent boolean DEFAULT false,
     frequency text,
+    paid_at date,
     created_at timestamp with time zone DEFAULT now()
 );
 
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     status text NOT NULL CHECK (status IN ('PENDING', 'PAID')),
     is_recurrent boolean DEFAULT false,
     frequency text,
+    paid_at date,
     created_at timestamp with time zone DEFAULT now()
 );
 
@@ -73,6 +75,7 @@ CREATE TABLE IF NOT EXISTS installments (
     value numeric NOT NULL,
     due_date date NOT NULL,
     status text NOT NULL CHECK (status IN ('PENDING', 'PAID')),
+    paid_at date,
     created_at timestamp with time zone DEFAULT now()
 );
 

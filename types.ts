@@ -55,6 +55,7 @@ export interface Revenue {
   isRecurrent: boolean;
   frequency?: Frequency;
   created_at?: string;
+  paidAt?: string;
 }
 
 export interface SimpleExpense {
@@ -69,6 +70,7 @@ export interface SimpleExpense {
   isRecurrent: boolean;
   frequency?: Frequency;
   created_at?: string;
+  paidAt?: string;
 }
 
 export interface Installment {
@@ -78,6 +80,7 @@ export interface Installment {
   value: number;
   dueDate: string;
   status: Status;
+  paidAt?: string;
 }
 
 export interface InstallmentDebt {
