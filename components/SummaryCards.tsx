@@ -38,7 +38,7 @@ const ResumoCard: React.FC<ResumoCardProps> = ({ title, totalValue, subValues, a
             {subValues.map((sub, idx) => (
               <div key={idx} className="flex flex-col">
                 <span className="text-xs font-bold text-[#64748B] mb-1 uppercase">{sub.label.toUpperCase()}</span>
-                <span className="text-base font-bold text-[#0F172A]">{formatCurrency(sub.value)}</span>
+                <span className={`text-base font-bold ${sub.label.toUpperCase() === 'RECEITAS' ? 'text-[#16A34A]' : sub.label.toUpperCase() === 'DESPESAS' ? 'text-[#DC2626]' : 'text-[#0F172A]'}`}>{formatCurrency(sub.value)}</span>
               </div>
             ))}
           </div>
