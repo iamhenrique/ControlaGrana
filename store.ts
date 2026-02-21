@@ -389,52 +389,58 @@ export const useFinanceStore = () => {
     }
   };
 
-  const toggleExpenseStatus = async (id: string) => {
+  const toggleExpenseStatus = async (id: string | number) => {
+    if (isSyncing) return;
     setIsSyncing(true);
     try {
       const exp = expenses.find(e => String(e.id) === String(id));
       if (!exp) return;
       const newStatus = exp.status === Status.PAID ? Status.PENDING : Status.PAID;
       const paidAt = newStatus === Status.PAID ? getLocalDateString() : null;
-      const { error } = await supabase.from('expenses').update({ status: newStatus, paid_at: paidAt }).eq('id', id);
+      const { error } = await supabase.from('expenses').update({ status: newStatus, paid_at: paidAt }).eq('id', exp.id);
       if (error) throw error;
       setExpenses(prev => prev.map(e => String(e.id) === String(id) ? { ...e, status: newStatus, paidAt: paidAt || undefined } : e));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA DESPESA:", e);
+      alert("Erro ao atualizar status da despesa. Verifique sua conexão.");
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const toggleRevenueStatus = async (id: string) => {
+  const toggleRevenueStatus = async (id: string | number) => {
+    if (isSyncing) return;
     setIsSyncing(true);
     try {
       const rev = revenues.find(r => String(r.id) === String(id));
       if (!rev) return;
       const newStatus = rev.status === Status.PAID ? Status.PENDING : Status.PAID;
       const paidAt = newStatus === Status.PAID ? getLocalDateString() : null;
-      const { error } = await supabase.from('revenues').update({ status: newStatus, paid_at: paidAt }).eq('id', id);
+      const { error } = await supabase.from('revenues').update({ status: newStatus, paid_at: paidAt }).eq('id', rev.id);
       if (error) throw error;
       setRevenues(prev => prev.map(r => String(r.id) === String(id) ? { ...r, status: newStatus, paidAt: paidAt || undefined } : r));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA RECEITA:", e);
+      alert("Erro ao atualizar status da receita. Verifique sua conexão.");
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const toggleInstallmentStatus = async (id: string) => {
+  const toggleInstallmentStatus = async (id: string | number) => {
+    if (isSyncing) return;
     setIsSyncing(true);
     try {
       const inst = installments.find(i => String(i.id) === String(id));
       if (!inst) return;
       const newStatus = inst.status === Status.PAID ? Status.PENDING : Status.PAID;
       const paidAt = newStatus === Status.PAID ? getLocalDateString() : null;
-      const { error } = await supabase.from('installments').update({ status: newStatus, paid_at: paidAt }).eq('id', id);
+      const { error } = await supabase.from('installments').update({ status: newStatus, paid_at: paidAt }).eq('id', inst.id);
       if (error) throw error;
       setInstallments(prev => prev.map(i => String(i.id) === String(id) ? { ...i, status: newStatus, paidAt: paidAt || undefined } : i));
     } catch (e) {
       console.error("ERRO AO ALTERNAR STATUS DA PARCELA:", e);
+      alert("Erro ao atualizar status da parcela. Verifique sua conexão.");
     } finally {
       setIsSyncing(false);
     }
