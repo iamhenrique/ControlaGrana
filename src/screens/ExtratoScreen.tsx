@@ -129,6 +129,9 @@ const ExtratoScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-8 flex justify-center">
       <div className="w-full max-w-md bg-white shadow-md rounded-lg p-6">
+        <div className="text-center text-gray-600 text-sm font-semibold mb-6">
+          {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+        </div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-bold text-gray-800">EXTRATO</h1>
           <button className="ml-4 px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Filters</button>
